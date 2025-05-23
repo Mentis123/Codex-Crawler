@@ -21,7 +21,7 @@ class AnalyzerAgent(BaseAgent):
         super().__init__(config)
         self.cache = {}
         self.cache_duration = config.get('cache_duration_hours', 12) if config else 12
-        self.model = config.get('model', 'gpt-4o-mini') if config else 'gpt-4o-mini'
+        self.model = config.get('model', 'gpt-4o') if config else 'gpt-4o'
         self.log_event("Analyzer agent initialized")
     
     def process(self, articles: List[Dict]) -> List[Dict]:
