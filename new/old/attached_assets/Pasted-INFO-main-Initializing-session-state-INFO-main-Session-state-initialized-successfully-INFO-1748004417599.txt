@@ -1,0 +1,68 @@
+INFO:__main__:Initializing session state
+INFO:__main__:Session state initialized successfully
+INFO:utils.content_extractor:Running in test mode - using Wired.com only
+INFO:__main__:Time period: 1 Weeks, Cutoff: 2025-05-16 12:46:32.385367
+INFO:utils.content_extractor:Searching with cutoff time: 2025-05-16 12:46:32.385367
+INFO:utils.content_extractor:Processing source: https://www.wired.com/tag/artificial-intelligence/
+INFO:utils.content_extractor:Scanning URL: https://www.wired.com/tag/artificial-intelligence/
+INFO:utils.content_extractor:Found potential AI article: AI Is Eating Data Center Power Demand—and It’s Only Getting Worse
+INFO:utils.content_extractor:Found potential AI article: A United Arab Emirates Lab Announces Frontier AI Projects—and a New Outpost in Silicon Valley
+INFO:utils.content_extractor:Found potential AI article: DOGE Used a Meta AI Model to Review Emails From Federal Workers
+INFO:utils.content_extractor:Found potential AI article: Politico’s Newsroom Is Starting a Legal Battle With Management Over AI
+INFO:utils.content_extractor:Found potential AI article: Who’s to Blame When AI Agents Screw Up?
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+INFO:utils.content_extractor:Article date: 2025-05-22 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: AI Is Eating Data Center Power Demand—and It’s Only Getting Worse
+INFO:utils.content_extractor:Found potential AI article: OpenAI's Big Bet That Jony Ive Can Make AI Hardware Work
+INFO:utils.content_extractor:Article date: 2025-05-22 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: A United Arab Emirates Lab Announces Frontier AI Projects—and a New Outpost in Silicon Valley
+INFO:utils.content_extractor:Found potential AI article: A Gaming YouTuber Says an AI-Generated Clone of His Voice Is Being Used to Narrate Doom Videos
+INFO:utils.content_extractor:Article date: 2025-05-22 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: DOGE Used a Meta AI Model to Review Emails From Federal Workers
+INFO:utils.content_extractor:Found potential AI article: Jack Dorsey's Block Made an AI Agent to Boost Its Own Productivity
+INFO:utils.content_extractor:Article date: 2025-05-22 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: Politico’s Newsroom Is Starting a Legal Battle With Management Over AI
+INFO:utils.content_extractor:Found potential AI article: With AI Mode, Google Search Is About to Get Even Chattier
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+INFO:utils.content_extractor:Article date: 2025-05-22 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: Who’s to Blame When AI Agents Screw Up?
+INFO:utils.content_extractor:Found potential AI article: Google’s AI Boss Says Gemini's New Abilities Point the Way to AGI
+INFO:utils.content_extractor:Article date: 2025-05-21 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: OpenAI's Big Bet That Jony Ive Can Make AI Hardware Work
+INFO:utils.content_extractor:Found potential AI article: How Peter Thiel’s Relationship With Eliezer Yudkowsky Launched the AI Revolution
+INFO:utils.content_extractor:Article date: 2025-05-21 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: Jack Dorsey's Block Made an AI Agent to Boost Its Own Productivity
+INFO:utils.content_extractor:Found potential AI article: ‘A Billion Streams and No Fans’: Inside a $10 Million AI Music Fraud Case
+INFO:utils.content_extractor:Article date: 2025-05-20 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: With AI Mode, Google Search Is About to Get Even Chattier
+INFO:utils.content_extractor:Found potential AI article: Is He Really Mad at Me? Maybe ChatGPT Knows
+INFO:utils.content_extractor:Article date: 2025-05-21 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: A Gaming YouTuber Says an AI-Generated Clone of His Voice Is Being Used to Narrate Doom Videos
+INFO:utils.content_extractor:Found potential AI article: Fortnite Players Are Already Making AI Darth Vader Swear
+INFO:utils.content_extractor:Article date: 2025-05-20 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: Google’s AI Boss Says Gemini's New Abilities Point the Way to AGI
+INFO:utils.content_extractor:Found potential AI article: No, Graduates: AI Hasn't Ended Your Career Before It Starts
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+INFO:utils.content_extractor:Article date: 2025-05-20 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: How Peter Thiel’s Relationship With Eliezer Yudkowsky Launched the AI Revolution
+INFO:utils.content_extractor:Found potential AI article: The Middle East Has Entered the AI Group Chat
+INFO:utils.content_extractor:Article date: 2025-05-20 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: ‘A Billion Streams and No Fans’: Inside a $10 Million AI Music Fraud Case
+INFO:utils.content_extractor:Found potential AI article: DOGE Used a Meta AI Model to Review Emails From Federal Workers
+INFO:utils.content_extractor:Article date: 2025-05-19 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: Is He Really Mad at Me? Maybe ChatGPT Knows
+INFO:utils.content_extractor:Article date: 2025-05-16 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Article date: 2025-05-16 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Skipping article older than cutoff: Fortnite Players Are Already Making AI Darth Vader Swear (2025-05-16) - Expected newer than 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Skipping article older than cutoff: No, Graduates: AI Hasn't Ended Your Career Before It Starts (2025-05-16) - Expected newer than 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Article date: 2025-05-15 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Skipping article older than cutoff: The Middle East Has Entered the AI Group Chat (2025-05-15) - Expected newer than 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Article date: 2025-05-22 00:00:00+00:00, Cutoff time: 2025-05-16 12:46:32.385367+00:00
+INFO:utils.content_extractor:Found AI article within time range: DOGE Used a Meta AI Model to Review Emails From Federal Workers
+INFO:utils.content_extractor:Found 14 articles from https://www.wired.com/tag/artificial-intelligence/
+INFO:utils.content_extractor:Successfully processed https://www.wired.com/tag/artificial-intelligence/: found 14 articles
+ERROR:__main__:Error processing source https://www.wired.com/tag/artificial-intelligence/: name 'ThreadPoolExecutor' is not defined
+INFO:__main__:Processed 1 sources, found 14 articles, added 0 articles

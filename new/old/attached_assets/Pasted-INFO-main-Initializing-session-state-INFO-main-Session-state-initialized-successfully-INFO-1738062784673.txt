@@ -1,0 +1,52 @@
+INFO:__main__:Initializing session state
+INFO:__main__:Session state initialized successfully
+INFO:__main__:Initializing session state
+INFO:__main__:Session state initialized successfully
+INFO:__main__:Initializing session state
+INFO:__main__:Session state initialized successfully
+INFO:__main__:Processing source https://wwd.com/business-news/technology/
+INFO:utils.content_extractor:Found potential article: Technology
+INFO:utils.content_extractor:Found potential article: Tuesday’s Digital Daily: January 28, 2024
+INFO:utils.content_extractor:Found potential article: Tuesday’s Digital Daily: January 28, 2024
+INFO:utils.content_extractor:Found potential article: Retail
+INFO:utils.content_extractor:Found potential article: Retail
+INFO:utils.content_extractor:Found potential article: Are AI Shopping Assistants Manipulating Consumers?
+INFO:utils.content_extractor:Found potential article: Retail
+INFO:utils.content_extractor:Found potential article: Mens Retail Business
+INFO:utils.content_extractor:Found potential article: Sustainability
+INFO:__main__:Found 9 articles from https://wwd.com/business-news/technology/
+INFO:__main__:Processing article: Technology
+Processing chunk 1/2 (~804 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Processing chunk 2/2 (~367 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:__main__:Validated article: Technology
+INFO:__main__:Processing article: Tuesday’s Digital Daily: January 28, 2024
+Processing chunk 1/1 (~782 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:__main__:Processing article: Tuesday’s Digital Daily: January 28, 2024
+Processing chunk 1/1 (~782 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:__main__:Processing article: Retail
+Processing chunk 1/2 (~679 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Processing chunk 2/2 (~432 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:__main__:Processing article: Retail
+Processing chunk 1/2 (~679 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Processing chunk 2/2 (~432 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:__main__:Processing article: Are AI Shopping Assistants Manipulating Consumers?
+Processing chunk 1/2 (~979 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+Processing chunk 2/2 (~47 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"

@@ -1,0 +1,173 @@
+# UPDATED AI News Aggregation and Evaluation System - PRD & DTS
+
+## 1. Introduction & Goals (Combined Overview)
+
+**1.1. Project Title:** AI News Aggregation and Evaluation System
+
+**1.2. Project Goal:** To develop an AI-powered system that automates the discovery, evaluation, and summarization of relevant AI news articles. This system will streamline the process of staying informed about AI trends by aggregating news from diverse sources, filtering it based on user-defined criteria, and delivering concise, relevant summaries.
+
+**1.3. Key Objectives:**
+    * **Automated News Discovery:** Efficiently gather AI news from web sources, academic repositories, and specialized news sites within a specified timeframe (last week).
+    * **Criteria-Based Evaluation:** Objectively assess article relevance against user-defined criteria using AI-driven scoring.
+    * **Contextual Rationale Generation:**  Provide clear and concise two-sentence rationales explaining the news's importance and relevance to user needs.
+    * **Human-Centric Review Process:** Enable human oversight and validation through a user-friendly review interface for article selection.
+    * **Deliverable Report Generation:**  Produce professional and easily shareable reports (PDF & CSV) of curated AI news.
+
+**2. Product Requirements Document (PRD)**
+
+**2.1. Target User:**
+
+Professionals, teams, and organizations requiring timely and filtered AI news updates to inform strategic decisions, research, competitive analysis, and trend monitoring. Examples include:
+    * Marketing teams tracking AI in marketing applications.
+    * R&D departments monitoring AI research breakthroughs.
+    * Strategy consultants advising clients on AI adoption.
+
+**2.2. Functional Requirements (Detailed)**
+
+*   **2.2.1. News Aggregation & Source Management:**
+    *   **FR-AGG-001:** The system shall search the following source types:
+        *   General Web (via Search API - e.g., SerpAPI).
+        *   Academic Repositories (e.g., ArXiv API).
+        *   Predefined AI News Websites (list to be configurable, initially: VentureBeat, MIT Technology Review).
+    *   **FR-AGG-002:** The system shall allow for the addition and removal of AI News Website sources in a configuration file (e.g., `config.yaml`).  *(New: Added configurability)*
+    *   **FR-AGG-003:** The system shall filter search results to include articles published within the last 7 days (configurable timeframe in `config.yaml`). *(New: Added timeframe configurability)*
+    *   **FR-AGG-004:** For each identified article, the system shall extract: Title, URL, Publication Date, and Full Content.
+*   **2.2.2. Article Evaluation & Scoring:**
+    *   **FR-EVAL-001:** The system shall evaluate articles against customer-specific criteria documents (initially RAG text files, later database-driven).
+    *   **FR-EVAL-002:** The system shall employ semantic similarity analysis to compare article content against criteria.
+    *   **FR-EVAL-003:** The system shall assign a relevance score on a scale of 1 to 10 (10 being highest relevance) based on the criteria match.  The scoring rubric will consider:
+        *   Semantic similarity score (primary factor).
+        *   Keyword density related to criteria (secondary factor). *(New: More specific scoring rubric)*
+    *   **FR-EVAL-004:** The system shall store the score for each evaluated article.
+*   **2.2.3. Rationale Generation & Contextualization:**
+    *   **FR-RAT-001:** For each article, the system shall generate a two-sentence rationale using an LLM:
+        *   Sentence 1:  Concise summary of the article's key AI news in a business-relevant context.
+        *   Sentence 2:  Explanation of the article's significance and potential impact for the target user/customer based on their criteria.
+    *   **FR-RAT-002:** The rationale shall be concise (target word count: 30-40 words total). *(New: Added target word count for rationale)*
+*   **2.2.4. Human Review & Selection Interface:**
+    *   **FR-REVIEW-001:** The system shall present a list of articles to a human reviewer, displaying: Title, Relevance Score, and Rationale.
+    *   **FR-REVIEW-002:** The interface shall allow the reviewer to:
+        *   View the full content of each article.
+        *   Select/Approve articles for inclusion in the report (using checkboxes or similar).
+        *   Optionally edit the generated rationale (text input field). *(New: Added rationale editing capability)*
+    *   **FR-REVIEW-003:** The interface can initially be text-based within Replit's console using `input()` for selection, but should be designed for future web-based UI expansion.
+*   **2.2.5. Report Generation & Delivery:**
+    *   **FR-REPORT-001:** The system shall generate reports in two formats: PDF and CSV.
+    *   **FR-REPORT-002:** PDF reports shall:
+        *   Be in landscape format.
+        *   Include: Title, Publication Source, Rationale, and (optionally) full article content for selected articles.
+    *   **FR-REPORT-003:** CSV reports shall include: Title, URL, Publication Date, Relevance Score, and Rationale for selected articles.
+    *   **FR-REPORT-004:** The system shall provide a download link/mechanism within Replit to access generated reports.
+
+**2.3. Non-Functional Requirements (Specific & Measurable)**
+
+*   **2.3.1. Performance:**
+    *   **NFR-PERF-001:** Article Aggregation & Evaluation: The system shall process up to 100 articles from configured sources within 5 minutes on Replit's standard free tier. *(New: More specific performance target)*
+    *   **NFR-PERF-002:** Rationale Generation: Rationale generation for 100 articles shall complete within 10 minutes. *(New: Separate rationale generation performance target)*
+*   **2.3.2. Scalability:**
+    *   **NFR-SCALE-001:** The architecture shall be designed to support future scaling to:
+        *   A larger number of news sources.
+        *   Processing of thousands of articles.
+        *   Integration with a user database and web-based UI.
+*   **2.3.3. Usability:**
+    *   **NFR-USE-001:** Replit Development Environment: The system should be easily navigable and debuggable within Replit.
+    *   **NFR-USE-002:** Review Interface: The human review interface, even in its initial text-based form, should be clear and efficient for article selection.
+*   **2.3.4. Maintainability:**
+    *   **NFR-MAINT-001:** Code Modularity: The codebase shall be modular and well-organized into agents, tools, and utility functions for ease of maintenance and updates.
+    *   **NFR-MAINT-002:** Code Documentation:  Code shall include comments explaining key logic and functionality.
+
+**2.4. Success Metrics:**
+
+*   **SM-001: Relevance Accuracy:**  Achieve an average human-validated relevance score agreement of at least 80% with the AI-assigned scores (measured through user feedback on a sample of articles). *(New: Added Success Metric - Relevance Accuracy)*
+*   **SM-002: Time Savings:**  Reduce the time spent by users on manually aggregating and filtering AI news by at least 50% (measured through user surveys and time tracking). *(New: Added Success Metric - Time Savings)*
+*   **SM-003: User Satisfaction:** Achieve an average user satisfaction rating of 4 out of 5 stars (measured through user surveys on report quality and usability). *(New: Added Success Metric - User Satisfaction)*
+
+**2.5. Release Criteria:**
+
+*   **RC-001: Functional Completeness:**  All Functional Requirements (2.2) are implemented and tested.
+*   **RC-002: Performance Acceptance:**  The system meets the Performance Non-Functional Requirements (2.3.1).
+*   **RC-003: User Acceptance Testing (UAT) Pass:**  Successful completion of UAT with representative users, demonstrating usability and functionality.
+*   **RC-004: Code Quality Standards:** Code adheres to basic coding standards (PEP 8 for Python) and is reasonably documented.
+
+**3. Detailed Technical Specification (DTS)**
+
+**(Sections remain largely the same as before, but with minor clarifications and additions)**
+
+**3.1. Architecture:** (No significant changes - Multi-Agent Architecture remains the core)
+
+**3.2. Agents (Detailed Responsibilities & Tools):**
+
+*   **3.2.1. SearchAgent:**
+    *   **Responsibilities:**  Source querying, article retrieval, initial filtering by date and keywords.
+    *   **Tools:**
+        *   `SerpAPISearchTool` (or similar): For general web search. API Key required (Replit Secret: `SERPAPI_API_KEY`).
+        *   `ArxivSearchTool`: For academic paper search.
+        *   `WebsiteScrapingTool`:  For scraping content from predefined AI news websites (using libraries like `BeautifulSoup4`, `Scrapy` if needed). Needs to be implemented.
+        *   `ArticleContentExtractorTool`:  Using LlamaIndex's `QueryEngine` or similar for efficient content extraction from retrieved articles.
+*   **3.2.2. EvaluationAgent:**
+    *   **Responsibilities:** Article evaluation against criteria, relevance scoring.
+    *   **Tools:**
+        *   `SemanticSimilarityTool`:  Utilizing LlamaIndex's `VectorStoreIndex` and embedding models (e.g., OpenAI embeddings) for semantic similarity comparison. Vector database: In-memory initially, consider Pinecone for scalability.
+        *   `KeywordDensityTool`: For calculating keyword density in articles related to criteria. (Simple Python function).
+        *   `ScoringLogicTool`: Implements the scoring rubric (FR-EVAL-003) - Python function.
+*   **3.2.3. RationaleAgent:**
+    *   **Responsibilities:** Two-sentence rationale generation.
+    *   **Tools:**
+        *   `LLMRationaleGeneratorTool`:  Wrapper around the chosen LLM (OpenAI) to generate rationales based on article content and criteria. Prompt engineering will be crucial here.
+*   **3.2.4. ReviewAgent:**
+    *   **Responsibilities:** Human review interface, article selection handling, report generation.
+    *   **Tools:**
+        *   `ConsoleReviewInterfaceTool`: (Initial text-based interface using `input()` in Replit).
+        *   `PDFReportGeneratorTool`:  Using `ReportLab` or similar, landscape format.
+        *   `CSVReportGeneratorTool`: Using Python's `csv` module.
+
+**3.3. Project Structure (Replit):** (No changes)
+
+**3.4. Dependencies (`requirements.txt`):** (Added potential specific libraries)
+Use code with caution.
+llama-index
+openai
+python-dotenv
+serpapi # Or your chosen search API library
+beautifulsoup4 # For web scraping (if needed)
+requests # For web requests (if needed)
+reportlab
+PyYAML # For config.yaml parsing (if you implement FR-AGG-002, FR-AGG-003)
+
+... Other required packages
+**3.5. Environment Variables (Replit Secrets):** (No changes)
+
+**3.6. Initial Setup (Replit AI Agent Instructions - **More Step-by-Step**):**
+
+1. **Create a new Python Repl** named "multi-agent-ai-news".
+2. **Use Replit AI Chat:** Open the AI Chat interface.
+3. **Instruct AI to create project structure:** "Please create the following directory structure in the Repl root: `agents`, `data/criteria`, `utils`."
+4. **Create core files using AI:**  "Create the following Python files in the respective directories: `main.py` in the root, `search_agent.py`, `evaluation_agent.py`, `rationale_agent.py`, `review_agent.py` in `agents/`, `search_tools.py`, `evaluation_tools.py`, `packaging_tools.py` in `utils/`, and `customer_criteria.txt` in `data/criteria/` (initially empty text file)."
+5. **Create `requirements.txt`:** "Create a file named `requirements.txt` in the root and add the following dependencies to it: `llama-index\nopenai\npython-dotenv\nserpapi\nbeautifulsoup4\nrequests\nreportlab\nPyYAML`" (Ensure each dependency is on a new line).
+6. **Install dependencies:** "Run `pip install -r requirements.txt` in the Shell to install the dependencies."
+7. **Set up Replit Secrets:** "Go to the 'Secrets' tool and add the following secrets: `OPENAI_API_KEY` (your OpenAI API key), `SERPAPI_API_KEY` (your SerpAPI key)."
+8. **Start implementing agents:** "Begin implementing the `SearchAgent` in `agents/search_agent.py`. Refer to section 3.2.1 for its responsibilities and tools. Start with a basic implementation of the `SerpAPISearchTool` in `utils/search_tools.py`." *(Continue step-by-step for each agent and tool, guiding the AI)*
+
+**3.7. Future Enhancements:** (No changes)
+
+**3.8. Testing:** (No changes)
+
+**3.9. Deployment:** (No changes)
+
+**4. Configuration (config.yaml - Example - if implementing FR-AGG-002, FR-AGG-003)**
+
+```yaml
+news_sources:
+  - type: website
+    name: VentureBeat
+    url: https://venturebeat.com/category/ai/feed/  # Example RSS feed (if available) or base URL for scraping
+  - type: website
+    name: MIT Technology Review
+    url: https://www.technologyreview.com/topic/artificial-intelligence/feed/ # Example RSS feed or base URL
+  # Add more website sources here
+  - type: arxiv
+    enabled: true  # Or false to disable ArXiv search
+  - type: web_search
+    enabled: true # Or false to disable general web search
+
+search_timeframe_days: 7 # Days to look back for news
