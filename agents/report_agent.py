@@ -203,20 +203,28 @@ class ReportAgent(BaseAgent):
                 crit_results = article.get('criteria_results', [])
                 if crit_results:
                     table_data = [["Criteria", "Status", "Notes"]]
-                    for crit in crit_results:
-                        status = "✅" if crit.get('status') else "❌"
+                    row_styles = [
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                        ('FONTSIZE', (0, 0), (-1, -1), 8),
+                    ]
+                    
+                    for idx, crit in enumerate(crit_results, 1):
+                        status = "✓" if crit.get('status') else "✗"
                         table_data.append([
                             crit.get('criteria', ''),
                             status,
                             crit.get('notes', '')
                         ])
+                        # Add color style for status cell
+                        if crit.get('status'):
+                            row_styles.append(('TEXTCOLOR', (1, idx), (1, idx), colors.green))
+                        else:
+                            row_styles.append(('TEXTCOLOR', (1, idx), (1, idx), colors.red))
+                            
                     table = Table(table_data, colWidths=[2.5*inch, 0.6*inch, 3.9*inch])
-                    table.setStyle(TableStyle([
-                        ('BACKGROUND', (0, 0), (-1, 0), colors.whitesmoke),
-                        ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
-                        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                        ('FONTSIZE', (0, 0), (-1, -1), 8),
-                    ]))
+                    table.setStyle(TableStyle(row_styles))
                     content.append(table)
                     content.append(Spacer(1, 6))
 
