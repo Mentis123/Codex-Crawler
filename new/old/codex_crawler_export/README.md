@@ -15,7 +15,7 @@ An AI-powered news aggregation system that intelligently collects and analyzes A
 - Python 3.11
 - Streamlit web interface
 - LlamaIndex for document processing
-- OpenAI (gpt-4o-mini) for intelligent analysis
+- OpenAI (gpt-4o) for intelligent analysis
 - SerpAPI for news gathering
 - Trafilatura for web content extraction
 - Pandas for data analysis

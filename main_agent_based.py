@@ -39,7 +39,7 @@ if 'initialized' not in st.session_state:
             },
             'analyzer_config': {
                 'cache_duration_hours': 12,
-                'model': 'gpt-4o-mini'
+                'model': 'gpt-4o'
             },
             'report_config': {
                 'max_report_articles': 10
