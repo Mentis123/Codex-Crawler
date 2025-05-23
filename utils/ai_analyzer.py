@@ -118,7 +118,7 @@ def _process_chunk(chunk: str) -> Optional[Dict[str, Any]]:
         try:
             # Use an explicit model with timeout and retry mechanism
             response = client.chat.completions.create(
-                model="gpt-4o-mini",  # Using gpt-4o-mini for better balance of speed and quality
+                model="gpt-4o",  # Using gpt-4o for better quality
                 messages=[
                     {"role": "system", "content": "You are a JSON generator. You must return ONLY valid, complete JSON in format {\"takeaway\": \"text\"}. Ensure all quotes are properly escaped and closed."},
                     {"role": "user", "content": prompt}
