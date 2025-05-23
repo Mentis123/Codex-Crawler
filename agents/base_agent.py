@@ -48,7 +48,7 @@ class BaseAgent:
         elif level == "critical":
             logger.critical(f"[{agent_name}] {message}")
             
-    def execute_ai_prompt(self, prompt, model="gpt-4o", response_format="text", max_tokens=1500):
+    def execute_ai_prompt(self, prompt, model="gpt-4o-mini", response_format="text", max_tokens=1500):
         """Execute an AI prompt with standardized error handling"""
         if not self.api_client:
             self.log_event("No OpenAI client available for prompt execution", "warning")
