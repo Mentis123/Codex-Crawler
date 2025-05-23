@@ -54,6 +54,15 @@ mode = "sequential"
 task = "shell.exec"
 args = "streamlit run --server.address 0.0.0.0 --server.enableCORS=false --server.enableWebsocketCompression=false main.py"
 
+[[workflows.workflow]]
+name = "Streamlit"
+author = 33159889
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "streamlit run --server.address 0.0.0.0 --server.enableCORS=false --server.enableWebsocketCompression=false main.py"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
