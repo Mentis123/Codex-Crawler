@@ -14,7 +14,13 @@ class EvaluationAgent(BaseAgent):
     TOOLS = [
         "ChatGPT", "Gemini", "Claude", "SageMaker", "Copilot", "DALL-E",
         "Bard", "Midjourney", "Stable Diffusion", "Firefly", "GPT-4",
-        "Llama", "Bedrock"
+        "Llama", "Bedrock", "Grok"
+    ]
+
+    RETAIL_TERMS = [
+        "ecommerce", "retail", "shopping", "marketplace", "consumer", 
+        "personalization", "recommendation", "supply chain", "inventory",
+        "merchandising", "sales", "customer experience", "revenue"
     ]
 
     def __init__(self, config=None):
@@ -28,11 +34,12 @@ class EvaluationAgent(BaseAgent):
             evaluated.append(article)
         return evaluated
 
-    def _find_company(self, text):
+    def _find_entity(self, text):
         for name in self.COMPANIES:
             if re.search(rf"\b{re.escape(name)}\b", text, re.IGNORECASE):
                 return name
-        match = re.search(r"\b([A-Z][A-Za-z&]+(?:\s+[A-Z][A-Za-z&]+){0,2}\s+(?:Inc|Corp|Corporation|LLC|Ltd|Group|Co))\b", text)
+        # Look for government agencies and other organizations
+        match = re.search(r"\b([A-Z][A-Za-z&]+(?:\s+[A-Z][A-Za-z&]+){0,3})\b", text)
         if match:
             return match.group(1)
         return None
@@ -52,66 +59,124 @@ class EvaluationAgent(BaseAgent):
         criteria = []
         score = 0
 
-        # Criterion 1: company using AI tool
-        company = self._find_company(text)
+        # Criterion 1: Specific entity using AI tool
+        entity = self._find_entity(text)
         tool = self._find_tool(text)
-        if company and tool and re.search(r"uses|using|leverages|adopts|deploys|implements|powered by", text_lower):
-            criteria.append({"criteria": "Company uses AI tool", "status": True, "notes": f"{company} uses {tool}"})
+        if entity and tool:
+            criteria.append({
+                "criteria": "Specific companies using AI tools",
+                "status": True,
+                "notes": f"{entity} using {tool}"
+            })
             score += 1
         else:
-            criteria.append({"criteria": "Company uses AI tool", "status": False, "notes": "No real usage found"})
+            criteria.append({
+                "criteria": "Specific companies using AI tools",
+                "status": False,
+                "notes": "No specific company/tool usage identified"
+            })
 
-        # Criterion 2: uses market GenAI tool
-        if tool and not re.search(r"own|homegrown|proprietary|in-house|its own", text_lower):
-            criteria.append({"criteria": "Uses market GenAI tool", "status": True, "notes": tool})
-            score += 1
-        elif re.search(r"own|homegrown|proprietary|in-house", text_lower):
-            criteria.append({"criteria": "Uses market GenAI tool", "status": False, "notes": "Building own platform"})
-        else:
-            criteria.append({"criteria": "Uses market GenAI tool", "status": False, "notes": "No GenAI tool mentioned"})
-
-        # Criterion 3: measurable ROI or impact
-        if re.search(r"\d+%|\$\d|roi|return on investment|savings|increase|decrease|growth|improvement|cost savings|reduced", text_lower):
-            criteria.append({"criteria": "Measurable ROI", "status": True, "notes": "Impact metrics present"})
-            score += 1
-        else:
-            criteria.append({"criteria": "Measurable ROI", "status": False, "notes": "No clear metrics"})
-
-        # Criterion 4: relevant to focus areas
-        if re.search(r"ecommerce|retail|personalization|recommendation|shopping|supply chain|logistics|business intelligence|enterprise chat|creative|content|merchandising|inventory", text_lower):
-            criteria.append({"criteria": "Relevant to focus", "status": True, "notes": "Matches focus keywords"})
+        # Criterion 2: Third-party GenAI tool
+        is_third_party = not re.search(r"own|homegrown|proprietary|in-house|its own", text_lower)
+        if tool and is_third_party:
+            criteria.append({
+                "criteria": "Tool is third-party Gen AI",
+                "status": True,
+                "notes": f"{tool} is an external, open-source model"
+            })
             score += 1
         else:
-            criteria.append({"criteria": "Relevant to focus", "status": False, "notes": "Not aligned"})
+            criteria.append({
+                "criteria": "Tool is third-party Gen AI",
+                "status": False,
+                "notes": "Using internal/proprietary solution"
+            })
 
-        # Criterion 5: neutral, not promotional
-        if re.search(r"partner|partnership|sponsor|press release|promotion", text_lower):
-            criteria.append({"criteria": "Neutral tone", "status": False, "notes": "Promotional/partnership"})
-        else:
-            criteria.append({"criteria": "Neutral tone", "status": True, "notes": "Neutral"})
+        # Criterion 3: Measurable ROI/Business impact
+        roi_pattern = r"\d+%|\$\d+|\d+\s*million|\d+\s*billion|increased|reduced|improved|saved"
+        if re.search(roi_pattern, text_lower) and any(term in text_lower for term in ["revenue", "sales", "cost", "efficiency", "productivity"]):
+            criteria.append({
+                "criteria": "Measurable ROI / Business impact",
+                "status": True,
+                "notes": "Clear metrics tied to business outcomes"
+            })
             score += 1
-
-        # Criterion 6: exclude customer service or visionary
-        if re.search(r"customer service|customer support|call center|visionary|future of", text_lower):
-            criteria.append({"criteria": "Exclude support/visionary", "status": False, "notes": "Service or visionary focus"})
         else:
-            criteria.append({"criteria": "Exclude support/visionary", "status": True, "notes": "Meets requirement"})
+            criteria.append({
+                "criteria": "Measurable ROI / Business impact",
+                "status": False,
+                "notes": "No quantifiable business metrics provided"
+            })
+
+        # Criterion 4: Retail/E-commerce relevance
+        retail_relevance = any(term in text_lower for term in self.RETAIL_TERMS)
+        if retail_relevance:
+            criteria.append({
+                "criteria": "Relevance to retail priorities",
+                "status": True,
+                "notes": "Directly relates to retail/e-commerce operations"
+            })
             score += 1
-
-        # Criterion 7: major platform update
-        if re.search(r"(openai|microsoft|google|amazon|walmart|e-?bay).*?(release|update|launch|announce|rollout)", text_lower):
-            criteria.append({"criteria": "Major platform update", "status": True, "notes": "Update detected"})
-            major_update = True
         else:
-            criteria.append({"criteria": "Major platform update", "status": False, "notes": "No major update"})
-            major_update = False
+            criteria.append({
+                "criteria": "Relevance to retail priorities",
+                "status": False,
+                "notes": "Not tied to e-commerce, personalization, or retail"
+            })
 
-        # Assessment determination
-        if major_update:
+        # Criterion 5: Neutral tone
+        promotional = re.search(r"partner|partnership|sponsor|press release|proud|excited|pleased to|delighted to", text_lower)
+        if not promotional:
+            criteria.append({
+                "criteria": "Neutral tone",
+                "status": True,
+                "notes": "Focuses on reporting rather than promotion"
+            })
+            score += 1
+        else:
+            criteria.append({
+                "criteria": "Neutral tone",
+                "status": False,
+                "notes": "Contains promotional language"
+            })
+
+        # Criterion 6: Concrete implementation vs fluff
+        if re.search(r"deployed|implemented|launched|in production|currently using|rolled out", text_lower):
+            criteria.append({
+                "criteria": "Not customer-service or visionary fluff",
+                "status": True,
+                "notes": "Descriptive of actual deployment"
+            })
+            score += 1
+        else:
+            criteria.append({
+                "criteria": "Not customer-service or visionary fluff",
+                "status": False,
+                "notes": "Focuses on future possibilities/customer service"
+            })
+
+        # Criterion 7: Major platform impact
+        platform_impact = False
+        major_platforms = ["openai", "microsoft", "google", "amazon", "meta"]
+        if any(p in text_lower for p in major_platforms) and re.search(r"retail|commerce|shopping|marketplace", text_lower):
+            platform_impact = True
+            criteria.append({
+                "criteria": "OpenAI / Microsoft / Google release impact",
+                "status": True,
+                "notes": "Major platform update with retail angle"
+            })
+            score += 1
+        else:
+            criteria.append({
+                "criteria": "OpenAI / Microsoft / Google release impact",
+                "status": False,
+                "notes": "No significant retail platform impact"
+            })
+
+        # Assessment determination based on strict criteria
+        if score >= 5 and retail_relevance:
             assessment = "INCLUDE"
-        elif score >= 4:
-            assessment = "INCLUDE"
-        elif score >= 3:
+        elif score >= 3 and retail_relevance:
             assessment = "OK"
         else:
             assessment = "CUT"
