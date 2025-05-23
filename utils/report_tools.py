@@ -61,7 +61,8 @@ def generate_pdf_report(articles):
         if crit_results:
             table_data = [["Criteria", "Status", "Notes"]]
             for crit in crit_results:
-                status = "✅" if crit.get('status') else "❌"
+                status = "✓" if crit.get('status') else "✗"
+                status_color = colors.green if crit.get('status') else colors.red
                 table_data.append([
                     crit.get('criteria', ''),
                     status,
@@ -73,6 +74,10 @@ def generate_pdf_report(articles):
                 ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
                 ('VALIGN', (0, 0), (-1, -1), 'TOP'),
                 ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('TEXTCOLOR', (1, 1), (1, -1), status_color),
+                ('ALIGN', (1, 0), (1, -1), 'CENTER'),
+                ('FONTNAME', (1, 1), (1, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (1, 1), (1, -1), 12),
             ]))
             content.append(table)
             content.append(Spacer(1, 6))
@@ -170,4 +175,3 @@ def save_reports(pdf_data, csv_data, excel_data, report_dir):
         csv_file.write(csv_data)
     with open(excel_path, "wb") as excel_file:
         excel_file.write(excel_data)
-
