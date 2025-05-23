@@ -1,10 +1,9 @@
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import landscape, letter
+from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-import csv
-from urllib.parse import quote, unquote
+from urllib.parse import unquote
 from io import BytesIO
 import os
 from datetime import datetime
@@ -12,114 +11,141 @@ import pandas as pd
 from openpyxl.utils import get_column_letter
 
 def generate_pdf_report(articles):
-    """Generate a PDF report with clean URLs"""
+    """Generate a detailed PDF report including evaluation info."""
+    if not articles:
+        return b""
+
     buffer = BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=landscape(letter),
-        topMargin=0.5*inch,
-        bottomMargin=0.5*inch,
-        leftMargin=0.5*inch,
-        rightMargin=0.5*inch
-    )
-
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
     styles = getSampleStyleSheet()
-    link_style = ParagraphStyle(
-        'LinkStyle',
-        parent=styles['Normal'],
-        textColor=colors.blue,
-        underline=True,
-        fontSize=8
+
+    title_style = styles['Heading1']
+    subtitle_style = styles['Heading2']
+    normal_style = styles['Normal']
+    takeaway_style = ParagraphStyle(
+        'TakeawayStyle',
+        parent=normal_style,
+        leftIndent=20,
+        rightIndent=20,
+        spaceAfter=12,
+        spaceBefore=12,
+        borderWidth=1,
+        borderColor=colors.lightgrey,
+        borderPadding=10,
+        borderRadius=5,
+        backColor=colors.lightgrey,
     )
-    normal_style = ParagraphStyle(
-        'NormalStyle',
-        parent=styles['Normal'],
-        fontSize=8,
-        leading=10
-    )
 
-    table_data = [['Title', 'Date', 'Takeaway']]
+    content = []
+    today = datetime.now().strftime("%Y-%m-%d")
+    content.append(Paragraph(f"AI News Report - {today}", title_style))
+    content.append(Spacer(1, 12))
+    content.append(Paragraph(f"Top {len(articles)} AI Articles", subtitle_style))
+    content.append(Spacer(1, 24))
 
-    for article in articles:
-        url = article['url']
-        if 'file:///' in url:
-            url = url.replace('file:///', '')
-            if 'https://' in url:
-                url = url.split('https://', 1)[1]
-            elif 'http://' in url:
-                url = url.split('http://', 1)[1]
-            url = f'https://{url}'
-        url = unquote(url)
+    for i, article in enumerate(articles, 1):
+        title = article.get('title', 'Untitled')
+        url = article.get('url', '')
+        content.append(Paragraph(f"{i}. <a href='{url}'>{title}</a>", subtitle_style))
+        content.append(Spacer(1, 6))
 
-        title = Paragraph(f'<para><a href="{url}">{article["title"]}</a></para>', link_style)
-        date = article['date']
-        takeaway = Paragraph(article.get('takeaway', 'No takeaway available'), normal_style)
+        date = article.get('date', 'Unknown date')
+        source = article.get('source', 'Unknown source')
+        content.append(Paragraph(f"Published: {date} | Source: {source}", normal_style))
+        content.append(Spacer(1, 6))
 
-        table_data.append([title, date, takeaway])
+        takeaway = article.get('takeaway', 'No takeaway available')
+        content.append(Paragraph(f"<b>Key Takeaway:</b> {takeaway}", takeaway_style))
 
-    # Updated column widths to give more space to Takeaway
-    table = Table(table_data, colWidths=[3.5*inch, 1*inch, 5.5*inch])
+        crit_results = article.get('criteria_results', [])
+        if crit_results:
+            table_data = [["Criteria", "Status", "Notes"]]
+            for crit in crit_results:
+                status = "✅" if crit.get('status') else "❌"
+                table_data.append([
+                    crit.get('criteria', ''),
+                    status,
+                    crit.get('notes', '')
+                ])
+            table = Table(table_data, colWidths=[2.5 * inch, 0.6 * inch, 3.9 * inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.whitesmoke),
+                ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ]))
+            content.append(table)
+            content.append(Spacer(1, 6))
 
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('TOPPADDING', (0, 0), (-1, 0), 12),
-        ('ALIGN', (0, 1), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
-        ('TOPPADDING', (0, 1), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-    ]))
+        assessment = article.get('assessment', 'N/A')
+        score = article.get('assessment_score', 0)
+        content.append(Paragraph(f"<b>Assessment:</b> {assessment} (Score: {score}%)", normal_style))
+        content.append(Spacer(1, 20))
 
-    doc.build([table])
+    doc.build(content)
     pdf_data = buffer.getvalue()
     buffer.close()
     return pdf_data
 
 def generate_csv_report(articles):
-    """Generate CSV report matching PDF format"""
+    """Generate a CSV report including evaluation info."""
+    if not articles:
+        return b""
+
     output = BytesIO()
     data = []
     for article in articles:
-        url = article['url']
+        url = article.get('url', '')
         if 'file:///' in url:
             url = url.split('https://')[-1]
             url = f'https://{url}'
         url = unquote(url)
 
-        data.append({
-            'Title': article['title'],
-            'Date': article['date'],
-            'Takeaway': article.get('takeaway', 'No takeaway available')
-        })
+        row = {
+            'Title': article.get('title', ''),
+            'URL': url,
+            'Date': article.get('date', ''),
+            'Source': article.get('source', ''),
+            'Takeaway': article.get('takeaway', ''),
+            'Assessment': article.get('assessment', ''),
+            'Score': article.get('assessment_score', 0),
+        }
+        for idx, crit in enumerate(article.get('criteria_results', []), 1):
+            row[f'C{idx}'] = 'Y' if crit.get('status') else 'N'
+            row[f'C{idx} Notes'] = crit.get('notes', '')
+        data.append(row)
 
     df = pd.DataFrame(data)
-    df.to_csv(output, index=False, encoding='utf-8')
+    df.to_csv(output, index=False)
     return output.getvalue()
 
 def generate_excel_report(articles):
-    """Generate Excel report matching PDF format"""
+    """Generate an Excel report including evaluation info."""
+    if not articles:
+        return b""
+
     output = BytesIO()
     data = []
     for article in articles:
-        url = article['url']
+        url = article.get('url', '')
         if 'file:///' in url:
             url = url.split('https://')[-1]
             url = f'https://{url}'
         url = unquote(url)
 
-        data.append({
-            'Title': article['title'],
+        row = {
+            'Title': article.get('title', ''),
             'URL': url,
-            'Date': article['date'],
-            'Takeaway': article.get('takeaway', 'No takeaway available')
-        })
+            'Date': article.get('date', ''),
+            'Source': article.get('source', ''),
+            'Takeaway': article.get('takeaway', ''),
+            'Assessment': article.get('assessment', ''),
+            'Score': article.get('assessment_score', 0),
+        }
+        for idx, crit in enumerate(article.get('criteria_results', []), 1):
+            row[f'C{idx}'] = 'Y' if crit.get('status') else 'N'
+            row[f'C{idx} Notes'] = crit.get('notes', '')
+        data.append(row)
 
     df = pd.DataFrame(data)
 
@@ -145,17 +171,3 @@ def save_reports(pdf_data, csv_data, excel_data, report_dir):
     with open(excel_path, "wb") as excel_file:
         excel_file.write(excel_data)
 
-#Example usage
-articles = [
-    {'title': 'Article 1', 'date': '2024-10-27', 'url': 'https://example.com/article1', 'takeaway': 'Takeaway 1'},
-    {'title': 'Article 2', 'date': '2024-10-26', 'url': 'https://example.com/article2', 'takeaway': 'Takeaway 2'}
-]
-
-report_dir = "./reports" #replace with your report directory
-os.makedirs(report_dir, exist_ok=True)
-
-pdf_report_data = generate_pdf_report(articles)
-csv_report_data = generate_csv_report(articles)
-excel_report_data = generate_excel_report(articles)
-
-save_reports(pdf_report_data, csv_report_data, excel_report_data, report_dir)
