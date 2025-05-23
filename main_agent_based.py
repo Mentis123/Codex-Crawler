@@ -261,14 +261,15 @@ def main():
                         for point in key_points:
                             st.markdown(f"• {point}")
 
-                    # Criteria dashboard
-                    criteria = article.get('criteria_results', [])
-                    render_criteria_dashboard(criteria)
-
-                    # Assessment summary
+                    # Assessment summary shown before criteria details
                     assessment = article.get('assessment', 'N/A')
                     score = article.get('assessment_score', 0)
                     render_assessment_box(assessment, score)
+
+                    # Criteria dashboard in a collapsed expander
+                    criteria = article.get('criteria_results', [])
+                    with st.expander("Criteria Details", expanded=False):
+                        render_criteria_dashboard(criteria)
 
     except Exception as e:
         st.error(f"Application error: {str(e)}")
