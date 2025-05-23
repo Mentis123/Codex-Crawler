@@ -457,12 +457,15 @@ def main():
                     
                     st.markdown(f'<div class="takeaway-box">{takeaway_text}</div>', unsafe_allow_html=True)
 
-                    # Criteria dashboard and assessment box
-                    criteria = article.get('criteria_results', [])
-                    render_criteria_dashboard(criteria)
+                    # Assessment box displayed before criteria details
                     assessment = article.get('assessment', 'N/A')
                     score = article.get('assessment_score', 0)
                     render_assessment_box(assessment, score)
+
+                    # Criteria dashboard in a collapsed expander for compact viewing
+                    criteria = article.get('criteria_results', [])
+                    with st.expander("Criteria Details", expanded=False):
+                        render_criteria_dashboard(criteria)
         elif st.session_state.scan_complete and not st.session_state.current_articles:
             with results_section:
                 st.warning("No articles found. Please try adjusting the time period or check the source sites.")
