@@ -1,13 +1,9 @@
 import streamlit as st
 from datetime import datetime
 import logging
-import os
-import pandas as pd
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Import the new agent-based components
 from agents.orchestrator import Orchestrator
-from agents.base_agent import BaseAgent
 from utils.simple_particles import add_simple_particles
 
 # Configure logging
@@ -68,6 +64,43 @@ def update_status(message):
     current_time = datetime.now().strftime("%H:%M:%S")
     status_msg = f"[{current_time}] {message}"
     st.session_state.scan_status.insert(0, status_msg)
+
+def render_criteria_dashboard(criteria):
+    """Render a styled criteria dashboard below each article."""
+    if not criteria:
+        return
+
+    st.markdown(
+        """
+        <style>
+        .criteria-table {width:100%; border-collapse:collapse; margin-bottom:5px;}
+        .criteria-table th, .criteria-table td {border:1px solid #555; padding:4px 6px; font-size:12px;}
+        .criteria-table th {background-color:#31333F; color:#fff;}
+        .status-true {color:#21ba45; font-weight:bold; text-align:center;}
+        .status-false {color:#db2828; font-weight:bold; text-align:center;}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    rows = "".join(
+        f"<tr><td>{c.get('criteria')}</td><td class='{'status-true' if c.get('status') else 'status-false'}'>{'✅' if c.get('status') else '❌'}</td><td>{c.get('notes')}</td></tr>"
+        for c in criteria
+    )
+    html = f"<table class='criteria-table'><thead><tr><th>Criteria</th><th>Status</th><th>Notes</th></tr></thead><tbody>{rows}</tbody></table>"
+    st.markdown(html, unsafe_allow_html=True)
+
+def render_assessment_box(assessment: str, score: int):
+    """Display assessment and score in a small colored box."""
+    color_map = {"INCLUDE": "#21ba45", "OK": "#f2c037", "CUT": "#db2828"}
+    color = color_map.get(assessment, "#cccccc")
+    st.markdown(
+        f"<div style='border:1px solid {color}; padding:6px 10px; border-radius:4px; display:inline-block; margin-bottom:10px;'>"
+        f"<b>Assessment:</b> <span style='color:{color}'>{assessment}</span> &nbsp; "
+        f"<b>Score:</b> {score}%"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
 def main():
     try:
@@ -230,21 +263,12 @@ def main():
 
                     # Criteria dashboard
                     criteria = article.get('criteria_results', [])
-                    if criteria:
-                        crit_df = pd.DataFrame([
-                            {
-                                'Criteria': c.get('criteria'),
-                                'Status': '✅' if c.get('status') else '❌',
-                                'Notes': c.get('notes')
-                            }
-                            for c in criteria
-                        ])
-                        st.table(crit_df)
+                    render_criteria_dashboard(criteria)
 
                     # Assessment summary
                     assessment = article.get('assessment', 'N/A')
                     score = article.get('assessment_score', 0)
-                    st.markdown(f"**Assessment:** {assessment} (Score: {score}%)")
+                    render_assessment_box(assessment, score)
 
     except Exception as e:
         st.error(f"Application error: {str(e)}")
