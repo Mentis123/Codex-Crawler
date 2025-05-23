@@ -4,6 +4,7 @@ from utils.content_extractor import load_source_sites, find_ai_articles, extract
 from utils.ai_analyzer import summarize_article
 from utils.report_tools import generate_pdf_report, generate_csv_report, generate_excel_report
 from utils.simple_particles import add_simple_particles
+from agents.evaluation_agent import EvaluationAgent
 import pandas as pd
 import json
 import os
@@ -19,6 +20,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Initialize evaluation agent
+evaluation_agent = EvaluationAgent()
 
 # Initialize session state before anything else
 if 'initialized' not in st.session_state:
@@ -64,6 +68,43 @@ def update_status(message):
     status_msg = f"[{current_time}] {message}"
     st.session_state.scan_status.insert(0, status_msg)
 
+def render_criteria_dashboard(criteria):
+    """Render a styled criteria dashboard below each article."""
+    if not criteria:
+        return
+
+    st.markdown(
+        """
+        <style>
+        .criteria-table {width:100%; border-collapse:collapse; margin-bottom:5px;}
+        .criteria-table th, .criteria-table td {border:1px solid #555; padding:4px 6px; font-size:12px;}
+        .criteria-table th {background-color:#31333F; color:#fff;}
+        .status-true {color:#21ba45; font-weight:bold; text-align:center;}
+        .status-false {color:#db2828; font-weight:bold; text-align:center;}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    rows = "".join(
+        f"<tr><td>{c.get('criteria')}</td><td class='{'status-true' if c.get('status') else 'status-false'}'>{'✅' if c.get('status') else '❌'}</td><td>{c.get('notes')}</td></tr>"
+        for c in criteria
+    )
+    html = f"<table class='criteria-table'><thead><tr><th>Criteria</th><th>Status</th><th>Notes</th></tr></thead><tbody>{rows}</tbody></table>"
+    st.markdown(html, unsafe_allow_html=True)
+
+def render_assessment_box(assessment: str, score: int):
+    """Display assessment and score in a colored box."""
+    color_map = {"INCLUDE": "#21ba45", "OK": "#f2c037", "CUT": "#db2828"}
+    color = color_map.get(assessment, "#cccccc")
+    st.markdown(
+        f"<div style='border:1px solid {color}; padding:6px 10px; border-radius:4px; display:inline-block; margin-bottom:10px;'>"
+        f"<b>Assessment:</b> <span style='color:{color}'>{assessment}</span> &nbsp; "
+        f"<b>Score:</b> {score}%"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
 
 
 def process_article(article, source, cutoff_time, db, seen_urls):
@@ -94,7 +135,15 @@ def process_article(article, source, cutoff_time, db, seen_urls):
             'source': source,
             'ai_validation': "AI-related article found in scan"
         }
-        
+
+        # Evaluate against selection criteria
+        eval_result = evaluation_agent.evaluate_article({
+            'title': article['title'],
+            'content': content,
+            'takeaway': article_data['takeaway']
+        })
+        article_data.update(eval_result)
+
         # Save to database if possible
         try:
             db.save_article(article_data)
@@ -407,6 +456,13 @@ def main():
                     """, unsafe_allow_html=True)
                     
                     st.markdown(f'<div class="takeaway-box">{takeaway_text}</div>', unsafe_allow_html=True)
+
+                    # Criteria dashboard and assessment box
+                    criteria = article.get('criteria_results', [])
+                    render_criteria_dashboard(criteria)
+                    assessment = article.get('assessment', 'N/A')
+                    score = article.get('assessment_score', 0)
+                    render_assessment_box(assessment, score)
         elif st.session_state.scan_complete and not st.session_state.current_articles:
             with results_section:
                 st.warning("No articles found. Please try adjusting the time period or check the source sites.")
