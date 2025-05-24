@@ -281,12 +281,13 @@ def main():
                         index=default_index,
                     )
                 fetch_button = st.button(
-                    "Fetch New Articles",
+                    "Fetch New Articles", 
                     disabled=st.session_state.is_fetching,
                     type="primary",
-                    key="fetch_btn_main",
-                    on_click=lambda: setattr(st.session_state, 'show_settings', False)
+                    key="fetch_btn_main"
                 )
+                if fetch_button:
+                    st.session_state.show_settings = False
 
         # Separate section for displaying results
         results_section = st.container()
