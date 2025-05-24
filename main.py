@@ -255,6 +255,7 @@ def main():
                 background: transparent;
                 border: 1px solid rgba(250, 250, 250, 0.2);
                 cursor: pointer;
+                margin-top: 15px;
             }
             .settings-btn:hover {
                 background: rgba(250, 250, 250, 0.1);
