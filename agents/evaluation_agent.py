@@ -66,14 +66,14 @@ class EvaluationAgent(BaseAgent):
             criteria.append({
                 "criteria": "Specific companies using AI tools",
                 "status": True,
-                "notes": f"{entity} using {tool}"
+                "notes": f"Article explicitly mentions {entity} leveraging {tool}"
             })
             score += 1
         else:
             criteria.append({
                 "criteria": "Specific companies using AI tools",
                 "status": False,
-                "notes": "No specific company/tool usage identified"
+                "notes": "No organization or AI tool is explicitly referenced"
             })
 
         # Criterion 2: Third-party GenAI tool
@@ -82,14 +82,14 @@ class EvaluationAgent(BaseAgent):
             criteria.append({
                 "criteria": "Tool is third-party Gen AI",
                 "status": True,
-                "notes": f"{tool} is an external, open-source model"
+                "notes": f"{tool} appears to be sourced from an external provider"
             })
             score += 1
         else:
             criteria.append({
                 "criteria": "Tool is third-party Gen AI",
                 "status": False,
-                "notes": "Using internal/proprietary solution"
+                "notes": "Context implies a homegrown or proprietary tool"
             })
 
         # Criterion 3: Measurable ROI/Business impact
@@ -98,14 +98,14 @@ class EvaluationAgent(BaseAgent):
             criteria.append({
                 "criteria": "Measurable ROI / Business impact",
                 "status": True,
-                "notes": "Clear metrics tied to business outcomes"
+                "notes": "Provides concrete metrics linked to business results"
             })
             score += 1
         else:
             criteria.append({
                 "criteria": "Measurable ROI / Business impact",
                 "status": False,
-                "notes": "No quantifiable business metrics provided"
+                "notes": "Lacks any numbers or measurable business impact"
             })
 
         # Criterion 4: Retail/E-commerce relevance
@@ -114,14 +114,14 @@ class EvaluationAgent(BaseAgent):
             criteria.append({
                 "criteria": "Relevance to retail priorities",
                 "status": True,
-                "notes": "Directly relates to retail/e-commerce operations"
+                "notes": "Discusses AI applications in a retail or e-commerce setting"
             })
             score += 1
         else:
             criteria.append({
                 "criteria": "Relevance to retail priorities",
                 "status": False,
-                "notes": "Not tied to e-commerce, personalization, or retail"
+                "notes": "No clear connection to retail or personalization topics"
             })
 
         # Criterion 5: Neutral tone
@@ -130,14 +130,14 @@ class EvaluationAgent(BaseAgent):
             criteria.append({
                 "criteria": "Neutral tone",
                 "status": True,
-                "notes": "Focuses on reporting rather than promotion"
+                "notes": "Tone is informational without overt promotion"
             })
             score += 1
         else:
             criteria.append({
                 "criteria": "Neutral tone",
                 "status": False,
-                "notes": "Contains promotional language"
+                "notes": "Includes promotional phrases or marketing language"
             })
 
         # Criterion 6: Concrete implementation vs fluff
@@ -145,14 +145,14 @@ class EvaluationAgent(BaseAgent):
             criteria.append({
                 "criteria": "Not customer-service or visionary fluff",
                 "status": True,
-                "notes": "Descriptive of actual deployment"
+                "notes": "Describes real-world deployment or production use"
             })
             score += 1
         else:
             criteria.append({
                 "criteria": "Not customer-service or visionary fluff",
                 "status": False,
-                "notes": "Focuses on future possibilities/customer service"
+                "notes": "Speaks mainly about future plans or customer service"
             })
 
         # Criterion 7: Major platform impact
@@ -163,14 +163,14 @@ class EvaluationAgent(BaseAgent):
             criteria.append({
                 "criteria": "OpenAI / Microsoft / Google release impact",
                 "status": True,
-                "notes": "Major platform update with retail angle"
+                "notes": "Highlights a significant platform announcement affecting retail"
             })
             score += 1
         else:
             criteria.append({
                 "criteria": "OpenAI / Microsoft / Google release impact",
                 "status": False,
-                "notes": "No significant retail platform impact"
+                "notes": "Does not describe a major platform release impacting retail"
             })
 
         # Assessment determination based on strict criteria
