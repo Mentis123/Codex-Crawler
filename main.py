@@ -244,96 +244,81 @@ def main():
         st.markdown(
             """
             <style>
-            .header-container {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                margin-bottom: 1rem;
-            }
             .settings-btn {
                 padding: 0.5rem;
                 border-radius: 0.375rem;
                 background: transparent;
                 border: 1px solid rgba(250, 250, 250, 0.2);
                 cursor: pointer;
-                margin-top: 8px;
             }
-            .settings-btn:hover {
-                background: rgba(250, 250, 250, 0.1);
+            .settings-console {
+                border: 1px solid rgba(250,250,250,0.2);
+                padding: 1rem;
+                border-radius: 0.5rem;
+                max-width: 300px;
+                margin: 0 auto 1rem auto;
+                text-align: center;
+            }
+            .settings-console > div {
+                margin-bottom: 0.5rem;
+            }
+            .compact-input {
+                min-height: 0;
+                padding: 0.25rem;
+            }
+            .stButton>button {
+                width: 100%;
             }
             </style>
             """,
             unsafe_allow_html=True,
         )
 
+        # Header with single settings button
         header_col1, header_col2 = st.columns([1, 11])
         with header_col1:
-            if st.session_state.get("show_settings", True):
-                if st.button("⚙️", key="close_settings_btn", help="Hide Settings", type="secondary"):
-                    st.session_state.show_settings = False
-                    st.session_state.show_config = False
-            else:
-                if st.button("⚙️", key="open_settings_btn", help="Settings", type="secondary"):
-                    st.session_state.show_settings = True
+            if st.button("⚙️", key="settings_toggle", help="Toggle Settings"):
+                st.session_state.show_settings = not st.session_state.get("show_settings", True)
+                st.session_state.show_config = False
         with header_col2:
             st.title("AI News Aggregation System")
 
         fetch_button = False
-        if st.session_state.show_settings:
-            st.markdown(
-                """
-                <style>
-                .settings-console {
-                    border:1px solid rgba(250,250,250,0.2);
-                    padding:0.5rem;
-                    border-radius:0.5rem;
-                    width:220px;
-                }
-                .settings-console > div {margin-bottom:4px;}
-                .settings-console > div:last-child {margin-bottom:0;}
-                .settings-console .stButton>button {width:100%;}
-                </style>
-                """,
-                unsafe_allow_html=True,
-            )
+        if st.session_state.get("show_settings", True):
             with st.container():
                 st.markdown('<div class="settings-console">', unsafe_allow_html=True)
-
-                row1_col1, row1_col2 = st.columns(2)
-                with row1_col1:
-                    if st.button("⚙️", key="hide_settings_btn", help="Hide", type="secondary", use_container_width=True):
-                        st.session_state.show_settings = False
-                        st.session_state.show_config = False
-                with row1_col2:
-                    if st.button("Config", key="config_btn", use_container_width=True):
-                        st.session_state.show_config = not st.session_state.show_config
-
-                row2_col1, row2_col2 = st.columns([3, 1])
-                with row2_col1:
+                
+                # Config button
+                if st.button("Config", key="config_btn", use_container_width=True):
+                    st.session_state.show_config = not st.session_state.show_config
+                
+                # Test mode with inline help
+                col1, col2 = st.columns([5, 1])
+                with col1:
                     st.session_state.test_mode = st.toggle(
                         "Test Mode",
                         value=st.session_state.get('test_mode', False),
                         key="test_mode_toggle",
                     )
-                with row2_col2:
-                    st.button(
-                        "❓",
-                        key="test_mode_help",
-                        help="In Test Mode, only Wired.com is scanned",
-                        type="secondary",
-                        use_container_width=True,
-                    )
-
-                row3_col1, row3_col2 = st.columns(2)
-                with row3_col1:
+                with col2:
+                    st.markdown("""
+                        <div style="margin-top:5px">
+                            <span title="In Test Mode, only Wired.com is scanned">ℹ️</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+                
+                # Time and Unit inputs
+                col1, col2 = st.columns(2)
+                with col1:
                     st.number_input(
                         "Time",
                         min_value=1,
                         step=1,
                         format="%d",
                         key="time_value",
+                        label_visibility="collapsed"
                     )
-                with row3_col2:
+                with col2:
                     unit_options = ["Days", "Weeks"]
                     default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
                     st.session_state.time_unit = st.selectbox(
@@ -341,8 +326,10 @@ def main():
                         unit_options,
                         index=default_index,
                         key="time_unit_select",
+                        label_visibility="collapsed"
                     )
 
+                # Fetch button
                 fetch_button = st.button(
                     "Fetch Articles",
                     disabled=st.session_state.is_fetching,
