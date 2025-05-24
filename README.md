@@ -40,9 +40,9 @@ An AI-powered news aggregation system that intelligently collects and analyzes A
 - `utils/`: Utility functions and helpers
 - `main.py`: Main Streamlit application
 - `main_agent_based.py`: New agent-based architecture implementation
-
 ## License
 
+codex/create-tests-directory-and-add-unit-tests
 MIT
 
 ## Testing
@@ -54,4 +54,3 @@ pip install -r requirements.txt
 pip install pytest
 pytest
 ```
-
