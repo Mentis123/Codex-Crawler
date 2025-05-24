@@ -239,22 +239,37 @@ def main():
         # Add simple particle effect background
         add_simple_particles()
 
-        st.title("AI News Aggregation System")
-
-        # Floating settings button
+        # Custom header with settings button
         st.markdown(
             """
             <style>
-            .settings-btn {position: fixed; top: 15px; right: 15px; z-index: 1000;}
+            .header-container {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 1rem;
+            }
+            .settings-btn {
+                padding: 0.5rem;
+                border-radius: 0.375rem;
+                background: transparent;
+                border: 1px solid rgba(250, 250, 250, 0.2);
+                cursor: pointer;
+            }
+            .settings-btn:hover {
+                background: rgba(250, 250, 250, 0.1);
+            }
             </style>
             """,
             unsafe_allow_html=True,
         )
 
-        st.markdown("<div class='settings-btn'>", unsafe_allow_html=True)
-        if st.button("⚙️", key="settings_btn", help="Settings", type="secondary"):
-            st.session_state.show_settings = not st.session_state.show_settings
-        st.markdown("</div>", unsafe_allow_html=True)
+        header_col1, header_col2 = st.columns([1, 11])
+        with header_col1:
+            if st.button("⚙️", key="settings_btn", help="Settings", type="secondary"):
+                st.session_state.show_settings = not st.session_state.show_settings
+        with header_col2:
+            st.title("AI News Aggregation System")
 
         fetch_button = False
         if st.session_state.show_settings:
