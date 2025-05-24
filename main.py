@@ -2,7 +2,12 @@ import streamlit as st
 from datetime import datetime, timedelta
 from utils.content_extractor import load_source_sites, find_ai_articles, extract_full_content
 from utils.ai_analyzer import summarize_article
-from utils.report_tools import generate_pdf_report, generate_csv_report, generate_excel_report
+from utils.report_tools import (
+    generate_pdf_report,
+    generate_csv_report,
+    generate_excel_report,
+    sort_by_assessment_and_score,
+)
 from utils.simple_particles import add_simple_particles
 from agents.evaluation_agent import EvaluationAgent
 import pandas as pd
@@ -359,7 +364,9 @@ def main():
                 st.session_state.scan_complete = True
 
                 # Store the current articles for persistent access
-                st.session_state.current_articles = st.session_state.articles.copy()
+                st.session_state.current_articles = sort_by_assessment_and_score(
+                    st.session_state.articles.copy()
+                )
 
                 # Generate reports and store them in session state
                 if st.session_state.articles:

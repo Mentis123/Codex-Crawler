@@ -5,6 +5,7 @@ import logging
 # Import the new agent-based components
 from agents.orchestrator import Orchestrator
 from utils.simple_particles import add_simple_particles
+from utils.report_tools import sort_by_assessment_and_score
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -213,7 +214,9 @@ def main():
                         st.session_state.excel_data = result['reports'].get('excel')
                         st.session_state.processing_time = result['execution_time']
                         st.session_state.scan_complete = True
-                        st.session_state.current_articles = st.session_state.selected_articles.copy()
+                        st.session_state.current_articles = sort_by_assessment_and_score(
+                            st.session_state.selected_articles.copy()
+                        )
                     else:
                         st.error(f"An error occurred: {result.get('error', 'Unknown error')}")
                     
