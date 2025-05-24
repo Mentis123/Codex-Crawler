@@ -40,7 +40,7 @@ An AI-powered news aggregation system that intelligently collects and analyzes A
 - `utils/`: Utility functions and helpers
 - `main.py`: Main Streamlit application
 - `main_agent_based.py`: New agent-based architecture implementation
-
 ## License
 
-MIT# Codex-Crawler
+This project is licensed under the [MIT License](LICENSE).
+
