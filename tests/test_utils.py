@@ -34,6 +34,8 @@ def test_validate_timeframe():
 
 def test_config_manager_load_save(tmp_path, monkeypatch):
     tmp_file = tmp_path / "config.json"
+    default_file = tmp_path / "config.default.json"
+    monkeypatch.setattr(config_manager, "DEFAULT_CONFIG_PATH", str(default_file))
     sample = {"a": 1}
     tmp_file.write_text(json.dumps(sample))
     monkeypatch.setattr(config_manager, "CONFIG_PATH", str(tmp_file))
@@ -43,6 +45,21 @@ def test_config_manager_load_save(tmp_path, monkeypatch):
     sample2 = {"b": 2}
     config_manager.save_config(sample2)
     assert json.loads(tmp_file.read_text()) == sample2
+
+
+def test_config_manager_reset(tmp_path, monkeypatch):
+    cfg_file = tmp_path / "config.json"
+    default_file = tmp_path / "config.default.json"
+    monkeypatch.setattr(config_manager, "CONFIG_PATH", str(cfg_file))
+    monkeypatch.setattr(config_manager, "DEFAULT_CONFIG_PATH", str(default_file))
+
+    monkeypatch.setattr(config_manager, "DEFAULT_CONFIG", {"orig": 1})
+    config_manager.archive_default_config()
+    config_manager.save_config({"changed": 2})
+    assert json.loads(cfg_file.read_text()) == {"changed": 2}
+
+    config_manager.reset_config()
+    assert json.loads(cfg_file.read_text()) == {"orig": 1}
 
 
 def test_clean_article_title():

@@ -2,6 +2,7 @@ import json
 import os
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
+DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.default.json")
 
 DEFAULT_CONFIG = {
     "evaluation": {
@@ -36,8 +37,16 @@ DEFAULT_CONFIG = {
 }
 
 
+def archive_default_config():
+    """Archive the original default configuration for reset purposes."""
+    if not os.path.exists(DEFAULT_CONFIG_PATH):
+        with open(DEFAULT_CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(DEFAULT_CONFIG, f, indent=2)
+
+
 def load_config():
     """Load configuration from disk or return defaults."""
+    archive_default_config()
     if os.path.exists(CONFIG_PATH):
         try:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -51,3 +60,14 @@ def save_config(config: dict):
     """Save configuration to disk."""
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
+
+
+def reset_config() -> dict:
+    """Restore configuration from archived defaults and return it."""
+    if os.path.exists(DEFAULT_CONFIG_PATH):
+        with open(DEFAULT_CONFIG_PATH, "r", encoding="utf-8") as f:
+            defaults = json.load(f)
+    else:
+        defaults = DEFAULT_CONFIG.copy()
+    save_config(defaults)
+    return defaults

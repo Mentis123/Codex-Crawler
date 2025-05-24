@@ -29,6 +29,8 @@ An AI-powered news aggregation system that intelligently collects and analyzes A
    - `SERPAPI_API_KEY`: Your SerpAPI key
 4. Run the application: `streamlit run main.py`
 
+If you need to restore the default configuration, run `python scripts/reset_config.py` from the repository root.
+
 ## Project Structure
 
 - `agents/`: Modular agent components

@@ -243,4 +243,4 @@ def validate_ai_relevance(article_data):
     except Exception as e:
         print(f"AI relevance validation failed: {e}")
         return {"is_relevant": True, "reason": "Validation error"}
-
+codex/fix-configuration-save-and-rollback-functionality
