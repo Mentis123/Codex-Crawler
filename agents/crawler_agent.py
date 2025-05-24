@@ -32,6 +32,7 @@ class CrawlerAgent(BaseAgent):
         self.cache_duration = config.get('cache_duration_hours', 6) if config else 6
         self.request_timeout = config.get('request_timeout', 10) if config else 10
         self.max_retries = config.get('max_retries', 3) if config else 3
+        self.max_pages = config.get('max_pages_per_source', 3) if config else 3
         self.ai_patterns = [
             r'\b[Aa][Ii]\b',  # Standalone "AI"
             r'\b[Aa][Ii]-[a-zA-Z]+\b',  # AI-powered, AI-driven, etc.
@@ -73,47 +74,67 @@ class CrawlerAgent(BaseAgent):
     
     def crawl_source(self, source_url: str, cutoff_time: datetime, seen_urls: Set[str]) -> List[Dict]:
         """Crawl a single source URL to find AI-related articles"""
-        # Normalize URL
-        if not source_url.startswith(('http://', 'https://')):
-            source_url = f'https://{source_url}'
-            
-        # Fetch page content (with caching)
-        html_content = self.fetch_page_with_cache(source_url)
-        if not html_content:
-            return []
-            
-        # Parse HTML
-        soup = BeautifulSoup(html_content, 'html.parser')
-        
-        # Find all links
-        links = soup.find_all('a', href=True)
-        
-        # Process links - either in parallel or sequentially based on count
+        if not source_url.startswith(("http://", "https://")):
+            source_url = f"https://{source_url}"
+
+        articles: List[Dict] = []
+        pages_crawled = 0
+        next_url = source_url
+
+        while next_url and pages_crawled < self.max_pages:
+            html_content = self.fetch_page_with_cache(next_url)
+            if not html_content:
+                break
+
+            soup = BeautifulSoup(html_content, "html.parser")
+            links = soup.find_all("a", href=True)
+
+            new_articles = self._process_links(links, next_url, cutoff_time, seen_urls)
+            articles.extend(new_articles)
+
+            next_url = self._find_next_page(soup, next_url)
+            pages_crawled += 1
+
+        return articles
+
+    def _process_links(self, links: List, base_url: str, cutoff_time: datetime, seen_urls: Set[str]) -> List[Dict]:
         articles = []
         if len(links) > 5:
-            # Parallel processing for many links
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                # Submit all links for processing
                 future_to_link = {
-                    executor.submit(self.process_link, link, source_url, cutoff_time, seen_urls): link 
+                    executor.submit(self.process_link, link, base_url, cutoff_time, seen_urls): link
                     for link in links
                 }
-                
-                # Collect results as they complete
+
                 for future in as_completed(future_to_link):
                     result = future.result()
                     if result and result['url'] not in seen_urls:
                         articles.append(result)
                         seen_urls.add(result['url'])
         else:
-            # Sequential processing for few links
             for link in links:
-                result = self.process_link(link, source_url, cutoff_time, seen_urls)
+                result = self.process_link(link, base_url, cutoff_time, seen_urls)
                 if result and result['url'] not in seen_urls:
                     articles.append(result)
                     seen_urls.add(result['url'])
-        
+
         return articles
+
+    def _find_next_page(self, soup: BeautifulSoup, current_url: str) -> Optional[str]:
+        link = soup.find("a", attrs={"rel": "next"})
+        if not link:
+            link = soup.find("a", string=lambda x: x and "next" in x.lower())
+        if not link:
+            link = soup.find("a", string=lambda x: x and "older" in x.lower())
+        if not link:
+            return None
+
+        href = link.get("href")
+        if not href:
+            return None
+        if not href.startswith(("http://", "https://")):
+            href = urljoin(current_url, href)
+        return href
     
     def process_link(self, link, source_url: str, cutoff_time: datetime, seen_urls: Set[str]) -> Optional[Dict]:
         """Process a single link to determine if it's an AI-related article"""
@@ -310,14 +331,22 @@ class CrawlerAgent(BaseAgent):
                 # Retry with exponential backoff
                 if attempt < self.max_retries - 1:
                     wait_time = 2 ** attempt
-                    self.log_event(f"Retry {attempt+1}/{self.max_retries} for content extraction from {url}")
+                    self.log_event(
+                        f"Retry {attempt+1}/{self.max_retries} for content extraction from {url}"
+                    )
                     time.sleep(wait_time)
-                    
+
             except Exception as e:
-                self.log_event(f"Error extracting content from {url}: {str(e)}", "error")
+                self.log_event(
+                    f"Error extracting content from {url}: {str(e)}",
+                    "error",
+                )
                 if attempt < self.max_retries - 1:
                     wait_time = 2 ** attempt
                     time.sleep(wait_time)
-                    
-        self.log_event(f"Failed to extract content from {url} after {self.max_retries} attempts", "warning")
+
+        self.log_event(
+            f"Failed to extract content from {url} after {self.max_retries} attempts",
+            "warning",
+        )
         return None
