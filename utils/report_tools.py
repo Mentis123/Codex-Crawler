@@ -1,6 +1,12 @@
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Table,
+    TableStyle,
+    Paragraph,
+    Spacer,
+)
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from urllib.parse import unquote
@@ -10,10 +16,25 @@ from datetime import datetime
 import pandas as pd
 from openpyxl.utils import get_column_letter
 
+ASSESSMENT_PRIORITY = {"INCLUDE": 0, "OK": 1, "CUT": 2}
+
+
+def sort_by_assessment_and_score(articles):
+    """Sort articles by assessment category and score."""
+    return sorted(
+        articles,
+        key=lambda a: (
+            ASSESSMENT_PRIORITY.get(a.get("assessment", "CUT"), 2),
+            -a.get("assessment_score", 0),
+        ),
+    )
+
 def generate_pdf_report(articles):
     """Generate a detailed PDF report including evaluation info."""
     if not articles:
         return b""
+
+    articles = sort_by_assessment_and_score(articles)
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)
@@ -103,6 +124,8 @@ def generate_csv_report(articles):
     if not articles:
         return b""
 
+    articles = sort_by_assessment_and_score(articles)
+
     output = BytesIO()
     data = []
     for article in articles:
@@ -134,6 +157,8 @@ def generate_excel_report(articles):
     """Generate an Excel report including evaluation info."""
     if not articles:
         return b""
+
+    articles = sort_by_assessment_and_score(articles)
 
     output = BytesIO()
     data = []
