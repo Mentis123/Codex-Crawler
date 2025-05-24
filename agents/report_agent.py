@@ -90,7 +90,19 @@ class ReportAgent(BaseAgent):
         
         # Take top N articles
         selected = [article for _, article in scored_articles[:self.max_articles]]
-        
+
+        # Sort selected articles by assessment category and score
+        assessment_priority = {"INCLUDE": 0, "OK": 1, "CUT": 2}
+        selected.sort(
+            key=lambda a: (
+                assessment_priority.get(
+                    str(a.get("assessment", "CUT")).upper(),
+                    2,
+                ),
+                -float(a.get("assessment_score", 0)),
+            )
+        )
+
         return selected
     
     def calculate_relevance_score(self, article: Dict) -> float:
