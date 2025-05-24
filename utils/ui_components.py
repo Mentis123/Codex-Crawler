@@ -164,10 +164,10 @@ def render_settings_drawer():
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown(
-        f"""
+        """
         <script>
-        const drawer = document.getElementById('settings-drawer');
         const overlay = document.getElementById('settings-overlay');
+
         if (drawer && overlay) {{
             {'drawer.classList.add("drawer-visible"); overlay.classList.add("overlay-visible");' if drawer_visible else 'drawer.classList.remove("drawer-visible"); overlay.classList.remove("overlay-visible");'}
             overlay.addEventListener('click', () => {{
