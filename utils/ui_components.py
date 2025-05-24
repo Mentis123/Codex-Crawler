@@ -72,16 +72,9 @@ def render_settings_drawer():
 
     _, close_col = st.columns([5, 1])
     with close_col:
-        st.markdown("<div id='close_settings_btn'>", unsafe_allow_html=True)
-        if st.button(
-            "✖",
-            key="close_settings_click",
-            help="Close settings",
-            type="secondary",
-        ):
+        if st.button("✖", key="close_settings_btn", help="Close settings", type="secondary"):
             st.session_state.show_settings = False
-            st.experimental_rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+            st.rerun()
 
     st.session_state.test_mode = st.toggle(
         "Test Mode",
@@ -174,12 +167,14 @@ def render_settings_drawer():
         """
         <script>
         const overlay = document.getElementById('settings-overlay');
-        if (overlay) {
-            overlay.addEventListener('click', () => {
+
+        if (drawer && overlay) {{
+            {'drawer.classList.add("drawer-visible"); overlay.classList.add("overlay-visible");' if drawer_visible else 'drawer.classList.remove("drawer-visible"); overlay.classList.remove("overlay-visible");'}
+            overlay.addEventListener('click', () => {{
                 const btn = document.querySelector('#close_settings_btn button');
                 if (btn) btn.click();
-            });
-        }
+            }});
+        }}
         </script>
         """,
         unsafe_allow_html=True,
