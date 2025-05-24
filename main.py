@@ -258,7 +258,7 @@ def main():
 
         fetch_button = False
         if st.session_state.show_settings:
-            with st.dialog("Settings", key="settings_dialog"):
+            with st.expander("Settings", expanded=True):
                 st.session_state.test_mode = st.toggle(
                     "Test Mode",
                     value=st.session_state.get('test_mode', False),
