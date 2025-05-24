@@ -1,30 +1,35 @@
 import re
 from agents.base_agent import BaseAgent
+from utils.config_manager import load_config
 
 
 class EvaluationAgent(BaseAgent):
     """Evaluate articles against selection criteria."""
 
-    COMPANIES = [
-        "Amazon", "Google", "Microsoft", "OpenAI", "Walmart", "eBay",
-        "Target", "Meta", "Apple", "Adobe", "Salesforce", "Nvidia",
-        "Anthropic", "Perplexity", "Crocs"
-    ]
-
-    TOOLS = [
-        "ChatGPT", "Gemini", "Claude", "SageMaker", "Copilot", "DALL-E",
-        "Bard", "Midjourney", "Stable Diffusion", "Firefly", "GPT-4",
-        "Llama", "Bedrock", "Grok"
-    ]
-
-    RETAIL_TERMS = [
-        "ecommerce", "retail", "shopping", "marketplace", "consumer", 
-        "personalization", "recommendation", "supply chain", "inventory",
-        "merchandising", "sales", "customer experience", "revenue"
-    ]
-
     def __init__(self, config=None):
-        super().__init__(config)
+        cfg = load_config().get("evaluation", {})
+        if config:
+            cfg.update(config)
+        super().__init__(cfg)
+        self.companies = cfg.get("companies", [])
+        self.tools = cfg.get("tools", [])
+        self.retail_terms = cfg.get("retail_terms", [])
+        self.roi_pattern = cfg.get(
+            "roi_pattern",
+            r"\d+%|\$\d+|\d+\s*million|\d+\s*billion|increased|reduced|improved|saved",
+        )
+        self.promotional_pattern = cfg.get(
+            "promotional_pattern",
+            r"partner|partnership|sponsor|press release|proud|excited|pleased to|delighted to",
+        )
+        self.deployment_terms = cfg.get(
+            "deployment_terms",
+            ["deployed", "implemented", "launched", "in production", "currently using", "rolled out"],
+        )
+        self.major_platforms = cfg.get(
+            "major_platforms",
+            ["openai", "microsoft", "google", "amazon", "meta"],
+        )
 
     def evaluate(self, articles):
         evaluated = []
@@ -35,7 +40,7 @@ class EvaluationAgent(BaseAgent):
         return evaluated
 
     def _find_entity(self, text):
-        for name in self.COMPANIES:
+        for name in self.companies:
             if re.search(rf"\b{re.escape(name)}\b", text, re.IGNORECASE):
                 return name
         # Look for government agencies and other organizations
@@ -45,7 +50,7 @@ class EvaluationAgent(BaseAgent):
         return None
 
     def _find_tool(self, text):
-        for name in self.TOOLS:
+        for name in self.tools:
             if re.search(rf"\b{re.escape(name)}\b", text, re.IGNORECASE):
                 return name
         if re.search(r"generative ai|large language model|llm", text, re.IGNORECASE):
@@ -93,8 +98,7 @@ class EvaluationAgent(BaseAgent):
             })
 
         # Criterion 3: Measurable ROI/Business impact
-        roi_pattern = r"\d+%|\$\d+|\d+\s*million|\d+\s*billion|increased|reduced|improved|saved"
-        if re.search(roi_pattern, text_lower) and any(term in text_lower for term in ["revenue", "sales", "cost", "efficiency", "productivity"]):
+        if re.search(self.roi_pattern, text_lower) and any(term in text_lower for term in ["revenue", "sales", "cost", "efficiency", "productivity"]):
             criteria.append({
                 "criteria": "Measurable ROI / Business impact",
                 "status": True,
@@ -109,7 +113,7 @@ class EvaluationAgent(BaseAgent):
             })
 
         # Criterion 4: Retail/E-commerce relevance
-        retail_relevance = any(term in text_lower for term in self.RETAIL_TERMS)
+        retail_relevance = any(term in text_lower for term in self.retail_terms)
         if retail_relevance:
             criteria.append({
                 "criteria": "Relevance to retail priorities",
@@ -125,7 +129,7 @@ class EvaluationAgent(BaseAgent):
             })
 
         # Criterion 5: Neutral tone
-        promotional = re.search(r"partner|partnership|sponsor|press release|proud|excited|pleased to|delighted to", text_lower)
+        promotional = re.search(self.promotional_pattern, text_lower)
         if not promotional:
             criteria.append({
                 "criteria": "Neutral tone",
@@ -141,7 +145,7 @@ class EvaluationAgent(BaseAgent):
             })
 
         # Criterion 6: Concrete implementation vs fluff
-        if re.search(r"deployed|implemented|launched|in production|currently using|rolled out", text_lower):
+        if any(t in text_lower for t in self.deployment_terms):
             criteria.append({
                 "criteria": "Not customer-service or visionary fluff",
                 "status": True,
@@ -157,8 +161,7 @@ class EvaluationAgent(BaseAgent):
 
         # Criterion 7: Major platform impact
         platform_impact = False
-        major_platforms = ["openai", "microsoft", "google", "amazon", "meta"]
-        if any(p in text_lower for p in major_platforms) and re.search(r"retail|commerce|shopping|marketplace", text_lower):
+        if any(p in text_lower for p in self.major_platforms) and re.search(r"retail|commerce|shopping|marketplace", text_lower):
             platform_impact = True
             criteria.append({
                 "criteria": "OpenAI / Microsoft / Google release impact",

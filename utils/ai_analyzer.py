@@ -8,6 +8,7 @@ import logging
 import functools
 import hashlib
 import time
+from utils.config_manager import load_config, DEFAULT_CONFIG
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -17,6 +18,11 @@ client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 # Simple in-memory cache for API responses
 _cache = {}
+
+def _get_takeaway_rubric() -> str:
+    """Retrieve the current takeaway rubric from configuration."""
+    cfg = load_config()
+    return cfg.get("takeaway_rubric", DEFAULT_CONFIG["takeaway_rubric"])
 
 def cache_result(func):
     """Cache decorator for expensive API calls"""
@@ -99,20 +105,11 @@ def _process_chunk(chunk: str) -> Optional[Dict[str, Any]]:
             chunk = chunk[:150000] + "..."
 
         prompt = (
-            "Analyze this text and create a business-focused takeaway following these STRICT RULES:\n\n" +
-            "1. Write EXACTLY 3-4 impactful sentences in a single paragraph (70-90 words total)\n" +
-            "2. ALWAYS include specific company names mentioned in the article\n" +
-            "3. MUST include REAL quantitative data when available ($16.6 billion, 200,000 users, 45% improvement)\n" +
-            "4. DO NOT fabricate or estimate statistics - use ONLY numbers from the source text\n" +
-            "5. Highlight measurable ROI, cost savings, revenue gains, or performance improvements\n" +
-            "6. Clearly explain HOW companies are using AI and the SPECIFIC strategic benefits\n" +
-            "7. Use clear, plain language without technical jargon\n" +
-            "8. Include strategic business implications that explain WHY this matters\n" +
-            "9. Format all numbers consistently with proper spacing and commas\n" +
-            "10. Stay professional - NO promotional language or generic claims\n\n" +
-            "Respond with valid JSON only: {\"takeaway\": \"Your concise takeaway here\"}\n" +
-            "Ensure your JSON has properly closed quotes and braces.\n\n" + 
-            chunk
+            "Analyze this text and create a business-focused takeaway following these STRICT RULES:\n\n"
+            + _get_takeaway_rubric() +
+            "\n\nRespond with valid JSON only: {\"takeaway\": \"Your concise takeaway here\"}\n"
+            "Ensure your JSON has properly closed quotes and braces.\n\n"
+            + chunk
         )
 
         try:
@@ -191,19 +188,10 @@ def _combine_summaries(summaries: List[Dict[str, Any]]) -> Dict[str, Any]:
             return {"takeaway": "Unable to extract meaningful content from the articles."}
 
         prompt = (
-            "Combine these takeaways into a single business-focused takeaway following these STRICT RULES:\n\n" +
-            "1. Write EXACTLY 3-4 impactful sentences in a single paragraph (70-90 words total)\n" +
-            "2. ALWAYS include specific company names from the original takeaways\n" +
-            "3. MUST include the most significant REAL quantitative data (revenue, user counts, percentages)\n" +
-            "4. NEVER fabricate numbers - use ONLY statistics mentioned in the source takeaways\n" +
-            "5. Prioritize measurable ROI, cost savings, or performance improvements\n" +
-            "6. Clearly explain HOW companies are using AI technology and WHY it matters\n" +
-            "7. Format all numbers consistently with proper commas and spacing\n" +
-            "8. Use plain, accessible language that executives can understand\n" +
-            "9. Focus on strategic business impact and competitive advantage\n" +
-            "10. Maintain professional tone - NO promotional language or vague claims\n\n" +
-            "Respond in JSON format: {\"takeaway\": \"combined takeaway\"}\n\n" +
-            f"Takeaways to combine: {combined_text[:50000]}"  # Limit text size
+            "Combine these takeaways into a single business-focused takeaway following these STRICT RULES:\n\n"
+            + _get_takeaway_rubric() +
+            "\n\nRespond in JSON format: {\"takeaway\": \"combined takeaway\"}\n\n"
+            f"Takeaways to combine: {combined_text[:50000]}"
         )
 
         try:
