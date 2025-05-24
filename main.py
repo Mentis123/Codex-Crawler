@@ -284,12 +284,6 @@ def main():
                     "Fetch New Articles",
                     disabled=st.session_state.is_fetching,
                     type="primary",
-                    key="fetch_btn_main"
-                )
-                fetch_button = st.button(
-                    "Fetch New Articles",
-                    disabled=st.session_state.is_fetching,
-                    type="primary",
                     key="fetch_btn_main",
                     on_click=lambda: setattr(st.session_state, 'show_settings', False)
                 )
