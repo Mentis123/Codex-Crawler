@@ -46,20 +46,42 @@ st.markdown("""
         align-items: center;
         gap: 15px;
         margin-bottom: 20px;
+        position: relative;
     }
     .settings-panel {
-        background: rgba(31, 31, 48, 0.95);
-        border: 1px solid rgba(250, 250, 250, 0.2);
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: rgba(31, 31, 48, 0.98);
+        border: 2px solid #8B5CF6;
         border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-        max-width: 300px;
+        padding: 16px;
+        margin-top: 8px;
+        width: 280px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
     }
     .gear-button {
         background: transparent;
         border: none;
         cursor: pointer;
         padding: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    /* Tighter controls styling */
+    .settings-panel .stButton {
+        margin-bottom: 8px;
+    }
+    .settings-panel .row-widget {
+        margin-bottom: 8px;
+    }
+    /* Help icon styling */
+    .help-icon {
+        width: 16px;
+        height: 16px;
+        margin-left: 4px;
     }
     .stButton button {
         width: 100%;
