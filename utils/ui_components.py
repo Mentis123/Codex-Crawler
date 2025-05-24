@@ -12,22 +12,44 @@ def render_settings_drawer():
             left: 0;
             width: 40%;
             max-width: 420px;
-            height: 100%;
+            height: 100vh;
             background: rgba(31,31,48,0.95);
             padding: 20px;
             overflow-y: auto;
             z-index: 1000;
             transition: transform 0.3s ease-in-out;
+            backdrop-filter: blur(10px);
+            box-shadow: 2px 0 5px rgba(0,0,0,0.2);
         }
         .drawer-hidden {
             transform: translateX(-100%);
+            visibility: hidden;
+        }
+        .settings-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease-in-out;
+        }
+        .overlay-visible {
+            opacity: 1;
+            visibility: visible;
         }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    drawer_class = "" if st.session_state.get("show_settings", False) else "drawer-hidden"
+    drawer_visible = st.session_state.get("show_settings", False)
+    drawer_class = "" if drawer_visible else "drawer-hidden"
+    overlay_class = "overlay-visible" if drawer_visible else ""
+    st.markdown(f"<div class='settings-overlay {overlay_class}'></div>", unsafe_allow_html=True)
     st.markdown(f"<div class='settings-drawer {drawer_class}'>", unsafe_allow_html=True)
 
     st.session_state.test_mode = st.toggle(
