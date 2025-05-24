@@ -274,8 +274,8 @@ def main():
 
         fetch_button = False
         if st.session_state.show_settings:
-            with st.expander("Settings", expanded=True):
-                st.session_state.test_mode = st.toggle(
+            st.markdown("### Settings")
+            st.session_state.test_mode = st.toggle(
                     "Test Mode",
                     value=st.session_state.get('test_mode', False),
                     help="In Test Mode, only Wired.com is scanned"
