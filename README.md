@@ -40,7 +40,17 @@ An AI-powered news aggregation system that intelligently collects and analyzes A
 - `utils/`: Utility functions and helpers
 - `main.py`: Main Streamlit application
 - `main_agent_based.py`: New agent-based architecture implementation
-
 ## License
 
-MIT# Codex-Crawler
+codex/create-tests-directory-and-add-unit-tests
+MIT
+
+## Testing
+
+Run unit tests with `pytest`:
+
+```bash
+pip install -r requirements.txt
+pip install pytest
+pytest
+```
