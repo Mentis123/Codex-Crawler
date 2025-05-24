@@ -41,6 +41,8 @@ if 'initialized' not in st.session_state:
         st.session_state.csv_data = None  # Initialize CSV data
         st.session_state.excel_data = None  # Initialize Excel data
         st.session_state.show_settings = True  # Show settings panel on first load
+        st.session_state.time_value = 1  # Default time period value
+        st.session_state.time_unit = "Weeks"  # Default time period unit
         st.session_state.initialized = True
         st.session_state.last_update = datetime.now()
         st.session_state.scan_complete = False  # Flag to track if a scan has completed
@@ -260,9 +262,20 @@ def main():
                 )
                 col1, col2 = st.columns([2, 2])
                 with col1:
-                    time_value = st.number_input("Time Period", min_value=1, value=1, step=1)
+                    st.session_state.time_value = st.number_input(
+                        "Time Period",
+                        min_value=1,
+                        value=st.session_state.get("time_value", 1),
+                        step=1,
+                    )
                 with col2:
-                    time_unit = st.selectbox("Unit", ["Days", "Weeks"], index=1)
+                    unit_options = ["Days", "Weeks"]
+                    default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
+                    st.session_state.time_unit = st.selectbox(
+                        "Unit",
+                        unit_options,
+                        index=default_index,
+                    )
                 fetch_button = st.button(
                     "Fetch New Articles",
                     disabled=st.session_state.is_fetching,
@@ -308,14 +321,16 @@ def main():
                     current_batch = sources[start_idx:end_idx]
 
                     # Calculate cutoff time based on selected unit - looking BACK in time
-                    if time_unit == "Weeks":
-                        days_to_subtract = time_value * 7
+                    if st.session_state.time_unit == "Weeks":
+                        days_to_subtract = st.session_state.time_value * 7
                     else:  # Days
-                        days_to_subtract = time_value
+                        days_to_subtract = st.session_state.time_value
 
                     # Create a cutoff_time in the past
                     cutoff_time = datetime.now() - timedelta(days=days_to_subtract)
-                    logger.info(f"Time period: {time_value} {time_unit}, Cutoff: {cutoff_time} (Including articles newer than this date)")
+                    logger.info(
+                        f"Time period: {st.session_state.time_value} {st.session_state.time_unit}, Cutoff: {cutoff_time} (Including articles newer than this date)"
+                    )
 
                     # Process current batch
                     for source in current_batch:
@@ -348,8 +363,8 @@ def main():
                 end_time = datetime.now()
                 elapsed_time = end_time - start_time
                 minutes = int(elapsed_time.total_seconds() // 60)
-                seconds = int(elapsed_time.total_seconds() % 60)
-                st.session_state.processing_time = f"{minutes}m {seconds}s"
+                seconds = elapsed_time.total_seconds() % 60
+                st.session_state.processing_time = f"{minutes}m {seconds:.1f}s"
 
             except Exception as e:
                 st.session_state.is_fetching = False
