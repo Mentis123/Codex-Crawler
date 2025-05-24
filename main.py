@@ -336,23 +336,25 @@ def main():
                 batch_size = 5
                 total_batches = (len(sources) + batch_size - 1) // batch_size
 
+                # Calculate cutoff time once using the selected unit
+                if st.session_state.time_unit == "Weeks":
+                    days_to_subtract = st.session_state.time_value * 7
+                else:
+                    days_to_subtract = st.session_state.time_value
+
+                cutoff_time = datetime.now() - timedelta(days=days_to_subtract)
+                logger.info(
+                    f"Time period: {st.session_state.time_value} {st.session_state.time_unit}, Cutoff: {cutoff_time} (Including articles newer than this date)"
+                )
+
+                st.write(
+                    f"Scanning articles from the last {st.session_state.time_value} {st.session_state.time_unit.lower()} (since {cutoff_time.strftime('%Y-%m-%d')})"
+                )
+
                 for batch_idx in range(total_batches):
                     start_idx = batch_idx * batch_size
                     end_idx = min(start_idx + batch_size, len(sources))
                     current_batch = sources[start_idx:end_idx]
-
-                    # Calculate cutoff time based on selected unit - looking BACK in time
-                    if st.session_state.time_unit == "Weeks":
-                        days_to_subtract = st.session_state.time_value * 7
-                    else:  # Days
-                        days_to_subtract = st.session_state.time_value
-
-                    # Create a cutoff_time in the past
-                    cutoff_time = datetime.now() - timedelta(days=days_to_subtract)
-                    logger.info(
-                        f"Time period: {st.session_state.time_value} {st.session_state.time_unit}, Cutoff: {cutoff_time} (Including articles newer than this date)"
-                    )
-
                     # Process current batch
                     for source in current_batch:
                         domain = urlparse(source).netloc or source
