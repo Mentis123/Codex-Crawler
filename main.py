@@ -268,102 +268,137 @@ def main():
 
         header_col1, header_col2 = st.columns([1, 11])
         with header_col1:
-            if st.button("⚙️", key="settings_btn", help="Settings", type="secondary"):
-                st.session_state.show_settings = not st.session_state.show_settings
+            if st.session_state.get("show_settings", True):
+                if st.button("⚙️", key="close_settings_btn", help="Hide Settings", type="secondary"):
+                    st.session_state.show_settings = False
+                    st.session_state.show_config = False
+            else:
+                if st.button("⚙️", key="open_settings_btn", help="Settings", type="secondary"):
+                    st.session_state.show_settings = True
         with header_col2:
             st.title("AI News Aggregation System")
 
         fetch_button = False
         if st.session_state.show_settings:
-            st.markdown("### Settings")
-            st.session_state.test_mode = st.toggle(
-                "Test Mode",
-                value=st.session_state.get('test_mode', False),
-                help="In Test Mode, only Wired.com is scanned"
+            st.markdown(
+                """
+                <style>
+                .settings-console {border:1px solid rgba(250,250,250,0.2); padding:0.5rem; border-radius:0.5rem; width:220px;}
+                .settings-console .stButton>button {width:100%;}
+                </style>
+                """,
+                unsafe_allow_html=True,
             )
-            col1, col2 = st.columns([2, 2])
-            with col1:
-                st.number_input(
-                    "Time Period",
-                    min_value=1,
-                    step=1,
-                    format="%d",
-                    key="time_value",
+            with st.container():
+                st.markdown('<div class="settings-console">', unsafe_allow_html=True)
+
+                row1_col1, row1_col2 = st.columns(2)
+                with row1_col1:
+                    if st.button("⚙️", key="hide_settings_btn", help="Hide", type="secondary", use_container_width=True):
+                        st.session_state.show_settings = False
+                        st.session_state.show_config = False
+                with row1_col2:
+                    if st.button("Config", key="config_btn", use_container_width=True):
+                        st.session_state.show_config = not st.session_state.show_config
+
+                st.session_state.test_mode = st.toggle(
+                    "Test Mode",
+                    value=st.session_state.get('test_mode', False),
+                    help="In Test Mode, only Wired.com is scanned"
                 )
-            with col2:
-                unit_options = ["Days", "Weeks"]
-                default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
-                st.session_state.time_unit = st.selectbox(
-                    "Unit",
-                    unit_options,
-                    index=default_index,
-                )
+
+                row2_col1, row2_col2 = st.columns(2)
+                with row2_col1:
+                    st.number_input(
+                        "Time",
+                        min_value=1,
+                        step=1,
+                        format="%d",
+                        key="time_value",
+                    )
+                with row2_col2:
+                    unit_options = ["Days", "Weeks"]
+                    default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
+                    st.session_state.time_unit = st.selectbox(
+                        "Unit",
+                        unit_options,
+                        index=default_index,
+                        key="time_unit_select",
+                    )
+
                 fetch_button = st.button(
-                    "Fetch New Articles",
+                    "Fetch Articles",
                     disabled=st.session_state.is_fetching,
                     type="primary",
-                    key="fetch_btn_main"
+                    key="fetch_btn_main",
+                    use_container_width=True,
                 )
                 if fetch_button:
                     st.session_state.show_settings = False
+                    st.session_state.show_config = False
 
-            if st.button("Configuration", key="config_btn"):
-                st.session_state.show_config = not st.session_state.show_config
+                st.markdown('</div>', unsafe_allow_html=True)
 
-        if st.session_state.show_config:
-            from utils.config_manager import load_config, save_config
-            st.markdown("### Configuration")
-            config_data = load_config()
-            eval_cfg = config_data.get("evaluation", {})
+            if st.session_state.show_config:
+                from utils.config_manager import load_config, save_config
+                st.markdown("### Configuration")
+                config_data = load_config()
+                eval_cfg = config_data.get("evaluation", {})
 
-            companies = st.text_area(
-                "Companies (comma separated)",
-                ", ".join(eval_cfg.get("companies", [])),
-            )
-            tools = st.text_area(
-                "Tools (comma separated)",
-                ", ".join(eval_cfg.get("tools", [])),
-            )
-            retail_terms = st.text_area(
-                "Retail Terms (comma separated)",
-                ", ".join(eval_cfg.get("retail_terms", [])),
-            )
-            roi_pattern = st.text_input(
-                "ROI Regex Pattern",
-                eval_cfg.get("roi_pattern", ""),
-            )
-            promo_pattern = st.text_input(
-                "Promotional Regex Pattern",
-                eval_cfg.get("promotional_pattern", ""),
-            )
-            deployment_terms = st.text_area(
-                "Deployment Terms (comma separated)",
-                ", ".join(eval_cfg.get("deployment_terms", [])),
-            )
-            major_platforms = st.text_area(
-                "Major Platforms (comma separated)",
-                ", ".join(eval_cfg.get("major_platforms", [])),
-            )
-            rubric = st.text_area(
-                "Takeaway Rubric",
-                config_data.get("takeaway_rubric", ""),
-                height=150,
-            )
-            if st.button("Save Configuration", key="save_config_btn"):
-                global evaluation_agent
-                eval_cfg["companies"] = [c.strip() for c in companies.split(",") if c.strip()]
-                eval_cfg["tools"] = [t.strip() for t in tools.split(",") if t.strip()]
-                eval_cfg["retail_terms"] = [r.strip() for r in retail_terms.split(",") if r.strip()]
-                eval_cfg["roi_pattern"] = roi_pattern
-                eval_cfg["promotional_pattern"] = promo_pattern
-                eval_cfg["deployment_terms"] = [d.strip() for d in deployment_terms.split(",") if d.strip()]
-                eval_cfg["major_platforms"] = [m.strip() for m in major_platforms.split(",") if m.strip()]
-                config_data["evaluation"] = eval_cfg
-                config_data["takeaway_rubric"] = rubric
-                save_config(config_data)
-                evaluation_agent = EvaluationAgent()
-                st.session_state.show_config = False
-                st.success("Configuration saved.")
+                companies = st.text_area(
+                    "Companies (comma separated)",
+                    ", ".join(eval_cfg.get("companies", [])),
+                )
+                tools = st.text_area(
+                    "Tools (comma separated)",
+                    ", ".join(eval_cfg.get("tools", [])),
+                )
+                retail_terms = st.text_area(
+                    "Retail Terms (comma separated)",
+                    ", ".join(eval_cfg.get("retail_terms", [])),
+                )
+                roi_pattern = st.text_input(
+                    "ROI Regex Pattern",
+                    eval_cfg.get("roi_pattern", ""),
+                )
+                promo_pattern = st.text_input(
+                    "Promotional Regex Pattern",
+                    eval_cfg.get("promotional_pattern", ""),
+                )
+                deployment_terms = st.text_area(
+                    "Deployment Terms (comma separated)",
+                    ", ".join(eval_cfg.get("deployment_terms", [])),
+                )
+                major_platforms = st.text_area(
+                    "Major Platforms (comma separated)",
+                    ", ".join(eval_cfg.get("major_platforms", [])),
+                )
+                rubric = st.text_area(
+                    "Takeaway Rubric",
+                    config_data.get("takeaway_rubric", ""),
+                    height=150,
+                )
+                cfg_col1, cfg_col2 = st.columns(2)
+                with cfg_col1:
+                    if st.button("Save Configuration", key="save_config_btn"):
+                        global evaluation_agent
+                        eval_cfg["companies"] = [c.strip() for c in companies.split(",") if c.strip()]
+                        eval_cfg["tools"] = [t.strip() for t in tools.split(",") if t.strip()]
+                        eval_cfg["retail_terms"] = [r.strip() for r in retail_terms.split(",") if r.strip()]
+                        eval_cfg["roi_pattern"] = roi_pattern
+                        eval_cfg["promotional_pattern"] = promo_pattern
+                        eval_cfg["deployment_terms"] = [d.strip() for d in deployment_terms.split(",") if d.strip()]
+                        eval_cfg["major_platforms"] = [m.strip() for m in major_platforms.split(",") if m.strip()]
+                        config_data["evaluation"] = eval_cfg
+                        config_data["takeaway_rubric"] = rubric
+                        save_config(config_data)
+                        evaluation_agent = EvaluationAgent()
+                        st.session_state.show_config = False
+                        st.success("Configuration saved.")
+                with cfg_col2:
+                    if st.button("Close", key="close_config_btn"):
+                        st.session_state.show_config = False
+
 
         # Separate section for displaying results
         results_section = st.container()
