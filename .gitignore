@@ -1,5 +1,6 @@
 # Articles database
 articles.db
 
-# Runtime configuration
+# Configuration files
 config.json
+config.default.json
