@@ -10,11 +10,10 @@ def render_settings_drawer():
             position: fixed;
             top: 0;
             left: 0;
-            width: 40%;
-            max-width: 420px;
+            width: 320px;
             height: 100vh;
             background: rgba(31,31,48,0.95);
-            padding: 20px;
+            padding: 20px 16px;
             overflow-y: auto;
             z-index: 1000;
             transition: transform 0.3s ease-in-out;
@@ -22,6 +21,17 @@ def render_settings_drawer():
             box-shadow: 2px 0 5px rgba(0,0,0,0.2);
             transform: translateX(-100%);
             visibility: hidden;
+        }
+        #close_settings_btn button {
+            float: right;
+            background: transparent;
+            border: none;
+            color: #fafafa;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        #close_settings_btn button:hover {
+            color: #ff6b6b;
         }
         .drawer-visible {
             transform: translateX(0);
@@ -49,16 +59,22 @@ def render_settings_drawer():
     )
 
     drawer_visible = st.session_state.get("show_settings", False)
-    drawer_class = ""
-    overlay_class = ""
+    drawer_class = "drawer-visible" if drawer_visible else ""
+    overlay_class = "overlay-visible" if drawer_visible else ""
     st.markdown(
-        "<div id='settings-overlay' class='settings-overlay'></div>",
+        f"<div id='settings-overlay' class='settings-overlay {overlay_class}'></div>",
         unsafe_allow_html=True,
     )
     st.markdown(
-        "<div id='settings-drawer' class='settings-drawer'>",
+        f"<div id='settings-drawer' class='settings-drawer {drawer_class}'>",
         unsafe_allow_html=True,
     )
+
+    _, close_col = st.columns([5, 1])
+    with close_col:
+        if st.button("✖", key="close_settings_btn", help="Close settings", type="secondary"):
+            st.session_state.show_settings = False
+            st.rerun()
 
     st.session_state.test_mode = st.toggle(
         "Test Mode",
@@ -154,6 +170,10 @@ def render_settings_drawer():
         const overlay = document.getElementById('settings-overlay');
         if (drawer && overlay) {{
             {'drawer.classList.add("drawer-visible"); overlay.classList.add("overlay-visible");' if drawer_visible else 'drawer.classList.remove("drawer-visible"); overlay.classList.remove("overlay-visible");'}
+            overlay.addEventListener('click', () => {{
+                const btn = document.querySelector('#close_settings_btn button');
+                if (btn) btn.click();
+            }});
         }}
         </script>
         """,
