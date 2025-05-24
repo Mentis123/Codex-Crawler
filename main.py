@@ -239,63 +239,38 @@ def main():
         # Add simple particle effect background
         add_simple_particles()
 
-        # Remove default streamlit margins
+        # Custom header with settings button
         st.markdown(
             """
             <style>
-            .main > div {
-                padding-top: 1rem;
-            }
             .header-container {
                 display: flex;
-                justify-content: space-between;
                 align-items: center;
-                margin-bottom: 2rem;
-                gap: 1rem;
-            }
-            .title-container {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-                flex-grow: 1;
-            }
-            .title-text {
-                margin: 0;
-                padding: 0;
-                font-size: 2.5rem;
-                line-height: 1.2;
-                font-weight: bold;
+                gap: 10px;
+                margin-bottom: 1rem;
             }
             .settings-btn {
-                padding: 8px;
-                border-radius: 6px;
+                padding: 0.5rem;
+                border-radius: 0.375rem;
                 background: transparent;
                 border: 1px solid rgba(250, 250, 250, 0.2);
                 cursor: pointer;
-                height: 36px;
-                width: 36px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin-left: auto;
+                margin-top: 8px;
             }
             .settings-btn:hover {
                 background: rgba(250, 250, 250, 0.1);
             }
             </style>
-            <div class="header-container">
-                <div class="title-container">
-                    <h1 class="title-text">AI News Aggregation System</h1>
-                </div>
-                <button class="settings-btn" id="settings-toggle" title="Settings">⚙️</button>
-            </div>
             """,
             unsafe_allow_html=True,
         )
 
-        # Hidden button to handle state
-        if st.button("", key="settings_btn", help="Settings", type="secondary"):
-            st.session_state.show_settings = not st.session_state.show_settings
+        header_col1, header_col2 = st.columns([1, 11])
+        with header_col1:
+            if st.button("⚙️", key="settings_btn", help="Settings", type="secondary"):
+                st.session_state.show_settings = not st.session_state.show_settings
+        with header_col2:
+            st.title("AI News Aggregation System")
 
         fetch_button = False
         if st.session_state.show_settings:
