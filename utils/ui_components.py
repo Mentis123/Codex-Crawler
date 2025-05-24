@@ -20,10 +20,12 @@ def render_settings_drawer():
             transition: transform 0.3s ease-in-out;
             backdrop-filter: blur(10px);
             box-shadow: 2px 0 5px rgba(0,0,0,0.2);
-        }
-        .drawer-hidden {
             transform: translateX(-100%);
             visibility: hidden;
+        }
+        .drawer-visible {
+            transform: translateX(0);
+            visibility: visible;
         }
         .settings-overlay {
             position: fixed;
@@ -47,10 +49,16 @@ def render_settings_drawer():
     )
 
     drawer_visible = st.session_state.get("show_settings", False)
-    drawer_class = "" if drawer_visible else "drawer-hidden"
-    overlay_class = "overlay-visible" if drawer_visible else ""
-    st.markdown(f"<div class='settings-overlay {overlay_class}'></div>", unsafe_allow_html=True)
-    st.markdown(f"<div class='settings-drawer {drawer_class}'>", unsafe_allow_html=True)
+    drawer_class = ""
+    overlay_class = ""
+    st.markdown(
+        "<div id='settings-overlay' class='settings-overlay'></div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<div id='settings-drawer' class='settings-drawer'>",
+        unsafe_allow_html=True,
+    )
 
     st.session_state.test_mode = st.toggle(
         "Test Mode",
@@ -138,4 +146,17 @@ def render_settings_drawer():
             st.success("Configuration saved.")
 
     st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown(
+        f"""
+        <script>
+        const drawer = document.getElementById('settings-drawer');
+        const overlay = document.getElementById('settings-overlay');
+        if (drawer && overlay) {{
+            {'drawer.classList.add("drawer-visible"); overlay.classList.add("overlay-visible");' if drawer_visible else 'drawer.classList.remove("drawer-visible"); overlay.classList.remove("overlay-visible");'}
+        }}
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
     return fetch_button, config_saved
