@@ -253,7 +253,7 @@ def main():
 
         st.markdown("<div class='settings-btn'>", unsafe_allow_html=True)
         if st.button("⚙️", key="settings_btn", help="Settings", type="secondary"):
-            st.session_state.show_settings = True
+            st.session_state.show_settings = not st.session_state.show_settings
         st.markdown("</div>", unsafe_allow_html=True)
 
         fetch_button = False
@@ -286,8 +286,13 @@ def main():
                     type="primary",
                     key="fetch_btn_main"
                 )
-                if fetch_button:
-                    st.session_state.show_settings = False
+                fetch_button = st.button(
+                    "Fetch New Articles",
+                    disabled=st.session_state.is_fetching,
+                    type="primary",
+                    key="fetch_btn_main",
+                    on_click=lambda: setattr(st.session_state, 'show_settings', False)
+                )
 
         # Separate section for displaying results
         results_section = st.container()
