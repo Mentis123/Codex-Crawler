@@ -276,26 +276,26 @@ def main():
         if st.session_state.show_settings:
             st.markdown("### Settings")
             st.session_state.test_mode = st.toggle(
-                    "Test Mode",
-                    value=st.session_state.get('test_mode', False),
-                    help="In Test Mode, only Wired.com is scanned"
+                "Test Mode",
+                value=st.session_state.get('test_mode', False),
+                help="In Test Mode, only Wired.com is scanned"
+            )
+            col1, col2 = st.columns([2, 2])
+            with col1:
+                st.session_state.time_value = st.number_input(
+                    "Time Period",
+                    min_value=1,
+                    value=st.session_state.get("time_value", 1),
+                    step=1,
                 )
-                col1, col2 = st.columns([2, 2])
-                with col1:
-                    st.session_state.time_value = st.number_input(
-                        "Time Period",
-                        min_value=1,
-                        value=st.session_state.get("time_value", 1),
-                        step=1,
-                    )
-                with col2:
-                    unit_options = ["Days", "Weeks"]
-                    default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
-                    st.session_state.time_unit = st.selectbox(
-                        "Unit",
-                        unit_options,
-                        index=default_index,
-                    )
+            with col2:
+                unit_options = ["Days", "Weeks"]
+                default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
+                st.session_state.time_unit = st.selectbox(
+                    "Unit",
+                    unit_options,
+                    index=default_index,
+                )
                 fetch_button = st.button(
                     "Fetch New Articles", 
                     disabled=st.session_state.is_fetching,
