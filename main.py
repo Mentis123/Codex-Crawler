@@ -245,32 +245,48 @@ def main():
             <style>
             .header-container {
                 display: flex;
+                justify-content: space-between;
                 align-items: center;
-                gap: 10px;
-                margin-bottom: 1rem;
+                padding: 1rem 0;
+            }
+            .title-text {
+                margin: 0;
+                font-size: 2rem;
+                font-weight: bold;
+                flex-grow: 1;
             }
             .settings-btn {
-                padding: 0.5rem;
-                border-radius: 0.375rem;
+                padding: 8px;
+                border-radius: 6px;
                 background: transparent;
                 border: 1px solid rgba(250, 250, 250, 0.2);
                 cursor: pointer;
-                margin-top: 8px;
+                height: 36px;
+                width: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
             .settings-btn:hover {
                 background: rgba(250, 250, 250, 0.1);
             }
             </style>
+            <div class="header-container">
+                <h1 class="title-text">AI News Aggregation System</h1>
+                <button class="settings-btn" id="settings-toggle" title="Settings">⚙️</button>
+            </div>
+            <script>
+                document.getElementById('settings-toggle').onclick = function() {
+                    window.streamlitSettings = !window.streamlitSettings;
+                }
+            </script>
             """,
             unsafe_allow_html=True,
         )
 
-        header_col1, header_col2 = st.columns([1, 11])
-        with header_col1:
-            if st.button("⚙️", key="settings_btn", help="Settings", type="secondary"):
-                st.session_state.show_settings = not st.session_state.show_settings
-        with header_col2:
-            st.title("AI News Aggregation System")
+        # Hidden button to handle state
+        if st.button("", key="settings_btn", help="Settings", type="secondary"):
+            st.session_state.show_settings = not st.session_state.show_settings
 
         fetch_button = False
         if st.session_state.show_settings:
