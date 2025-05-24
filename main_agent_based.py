@@ -49,7 +49,7 @@ if 'initialized' not in st.session_state:
                 'max_report_articles': 10
             }
         }
-        
+        st.session_state.orchestrator_config = default_config
         st.session_state.orchestrator = Orchestrator(default_config)
         logger.info("Session state initialized successfully")
     except Exception as e:
@@ -177,6 +177,9 @@ def main():
         # Clear previous results when starting a new fetch
         if fetch_button:
             st.session_state.is_fetching = True
+            st.session_state.orchestrator = Orchestrator(
+                st.session_state.get('orchestrator_config', {})
+            )
             st.session_state.pdf_data = None
             st.session_state.csv_data = None
             st.session_state.excel_data = None
