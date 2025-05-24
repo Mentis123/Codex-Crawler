@@ -42,5 +42,15 @@ An AI-powered news aggregation system that intelligently collects and analyzes A
 - `main_agent_based.py`: New agent-based architecture implementation
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+codex/create-tests-directory-and-add-unit-tests
+MIT
 
+## Testing
+
+Run unit tests with `pytest`:
+
+```bash
+pip install -r requirements.txt
+pip install pytest
+pytest
+```
