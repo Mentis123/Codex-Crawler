@@ -180,21 +180,66 @@ class SearchAgent:
         return articles
 
 
+from utils.content_extractor import extract_metadata as ce_extract_metadata, extract_full_content as ce_extract_full_content, validate_ai_relevance as ce_validate_ai_relevance
+from utils.ai_analyzer import summarize_article as ai_summarize_article
+
+
 def extract_metadata(url, cutoff_time):
-    #Implementation needed here.  Returns a dict with at least a 'date' key or None if invalid
-    return {"date": datetime.now()}
+    """Retrieve metadata for a URL and filter by cutoff time."""
+    try:
+        metadata = ce_extract_metadata(url, cutoff_time)
+        if not metadata or 'date' not in metadata:
+            return None
+
+        date_val = metadata['date']
+        if isinstance(date_val, str):
+            parsed = None
+            for fmt in (
+                "%Y-%m-%d",
+                "%Y-%m-%dT%H:%M:%S",
+                "%Y-%m-%d %H:%M:%S",
+                "%Y-%m-%dT%H:%M:%S%z",
+            ):
+                try:
+                    parsed = datetime.strptime(date_val, fmt)
+                    break
+                except Exception:
+                    continue
+
+            date_val = parsed or datetime.now()
+
+        if date_val < cutoff_time:
+            return None
+
+        return {"date": date_val}
+    except Exception as e:
+        print(f"Metadata extraction failed for {url}: {e}")
+        return None
 
 
 def extract_full_content(url):
-    #Implementation needed here. Returns article content or "" if error
-    return "Article content placeholder"
+    """Return the full textual content of the article."""
+    try:
+        content = ce_extract_full_content(url)
+        return content or ""
+    except Exception as e:
+        print(f"Content extraction failed for {url}: {e}")
+        return ""
 
 
 def summarize_article(content):
-    #Implementation needed here.  Returns a dict with analysis or None if error
-    return {"summary": "Summary placeholder"}
+    """Summarize article content using the AI analyzer."""
+    try:
+        return ai_summarize_article(content)
+    except Exception as e:
+        print(f"Article summarization failed: {e}")
+        return None
 
 
 def validate_ai_relevance(article_data):
-    #Implementation needed here. Returns a dict with {'is_relevant':bool, 'reason':str}
-    return {"is_relevant": True, "reason": "Placeholder reason"}
+    """Check if an article is relevant to AI topics."""
+    try:
+        return ce_validate_ai_relevance(article_data)
+    except Exception as e:
+        print(f"AI relevance validation failed: {e}")
+        return {"is_relevant": True, "reason": "Validation error"}
