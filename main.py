@@ -293,15 +293,17 @@ def main():
         results_section = st.container()
 
         if fetch_button:
-            # Reset state for a new scan
+            # First hide settings panel
+            st.session_state.show_settings = False
+            # Then reset state for a new scan
             st.session_state.is_fetching = True
             st.session_state.pdf_data = None
             st.session_state.csv_data = None
             st.session_state.excel_data = None
             st.session_state.scan_complete = False
             st.session_state.articles = []
-            # Hide settings panel after initiating fetch
-            st.session_state.show_settings = False
+            # Force a rerun to immediately hide settings
+            st.rerun()
 
         if fetch_button or st.session_state.is_fetching:
             try:
