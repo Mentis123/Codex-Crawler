@@ -43,4 +43,15 @@ An AI-powered news aggregation system that intelligently collects and analyzes A
 
 ## License
 
-MIT# Codex-Crawler
+MIT
+
+## Testing
+
+Run unit tests with `pytest`:
+
+```bash
+pip install -r requirements.txt
+pip install pytest
+pytest
+```
+
