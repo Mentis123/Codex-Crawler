@@ -24,6 +24,9 @@ if 'initialized' not in st.session_state:
         st.session_state.pdf_data = None
         st.session_state.csv_data = None
         st.session_state.excel_data = None
+        st.session_state.show_settings = True  # Display settings modal on first load
+        st.session_state.time_value = 1  # Default time period value
+        st.session_state.time_unit = "Weeks"  # Default time period unit
         st.session_state.initialized = True
         st.session_state.last_update = datetime.now()
         st.session_state.scan_complete = False
@@ -109,25 +112,63 @@ def main():
 
         st.title("AI News Aggregation System")
 
-        # Sidebar controls
-        with st.sidebar:
+        # Floating settings button and modal
+        st.markdown(
+            """
+            <style>
+            .settings-btn {position: fixed; top: 15px; right: 15px; z-index: 1000;}
+            .settings-modal {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(31,31,48,0.95);
+                padding: 20px;
+                border-radius: 8px;
+                z-index: 1000;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("<div class='settings-btn'>", unsafe_allow_html=True)
+        if st.button("⚙️", key="settings_btn", help="Settings", type="secondary"):
+            st.session_state.show_settings = not st.session_state.show_settings
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        if st.session_state.show_settings:
+            st.markdown("<div class='settings-modal'>", unsafe_allow_html=True)
             st.session_state.test_mode = st.toggle(
                 "Test Mode",
                 value=st.session_state.get('test_mode', False),
                 help="In Test Mode, only Wired.com is scanned"
             )
-
-        col1, col2 = st.sidebar.columns([2, 2])
-        with col1:
-            time_value = st.number_input("Time Period", min_value=1, value=1, step=1)
-        with col2:
-            time_unit = st.selectbox("Unit", ["Days", "Weeks"], index=1)
-
-        fetch_button = st.sidebar.button(
-            "Fetch New Articles",
-            disabled=st.session_state.is_fetching,
-            type="primary"
-        )
+            col1, col2 = st.columns([2, 2])
+            with col1:
+                st.session_state.time_value = st.number_input(
+                    "Time Period",
+                    min_value=1,
+                    value=st.session_state.get("time_value", 1),
+                    step=1,
+                )
+            with col2:
+                unit_options = ["Days", "Weeks"]
+                default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
+                st.session_state.time_unit = st.selectbox(
+                    "Unit",
+                    unit_options,
+                    index=default_index,
+                )
+            fetch_button = st.button(
+                "Fetch New Articles",
+                disabled=st.session_state.is_fetching,
+                type="primary",
+                key="fetch_btn_agent"
+            )
+            st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            fetch_button = False
 
         # Create container for results
         results_section = st.container()
@@ -156,8 +197,8 @@ def main():
                     # Run the orchestrated workflow
                     result = st.session_state.orchestrator.run_workflow(
                         sources,
-                        time_period=time_value,
-                        time_unit=time_unit
+                        time_period=st.session_state.time_value,
+                        time_unit=st.session_state.time_unit
                     )
                     
                     # Update UI with status messages
