@@ -62,6 +62,19 @@ st.markdown("""
     .stButton button {
         width: 100%;
     }
+    .help-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-size: 12px;
+        margin-top: 8px;
+        cursor: help;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -300,27 +313,21 @@ def main():
 
         # Settings panel
         if st.session_state.get("show_settings", True):
-            with st.container():
-                st.markdown('<div class="settings-panel">', unsafe_allow_html=True)
+            # Settings panel
+            st.markdown('<div class="settings-panel">', unsafe_allow_html=True)
 
-                # Config button
-                if st.button("Config", key="config_btn", use_container_width=True):
-                    st.session_state.show_config = not st.session_state.show_config
-
-                # Test mode with inline help
-                col1, col2 = st.columns([5, 1])
-                with col1:
-                    st.session_state.test_mode = st.toggle(
-                        "Test Mode",
-                        value=st.session_state.get('test_mode', False),
-                        key="test_mode_toggle",
-                    )
-                with col2:
-                    st.markdown("""
-                        <div style="margin-top:5px">
-                            <span title="In Test Mode, only Wired.com is scanned">ℹ️</span>
-                        </div>
-                    """, unsafe_allow_html=True)
+            # Test mode with inline help
+            help_col1, help_col2 = st.columns([5, 1])
+            with help_col1:
+                st.session_state.test_mode = st.toggle(
+                    "Test Mode",
+                    value=st.session_state.get('test_mode', False),
+                    key="test_mode_toggle",
+                )
+            with help_col2:
+                st.markdown("""
+                    <div class="help-icon" title="In Test Mode, only Wired.com is scanned">?</div>
+                """, unsafe_allow_html=True)
 
                 # Time and Unit inputs
                 col1, col2 = st.columns(2)
