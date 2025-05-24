@@ -14,7 +14,10 @@ from utils.config_manager import load_config, DEFAULT_CONFIG
 logger = logging.getLogger(__name__)
 
 # Initialize OpenAI client
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+try:
+    client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+except Exception:
+    client = None
 
 # Simple in-memory cache for API responses
 _cache = {}
