@@ -13,7 +13,7 @@ from utils.config_manager import load_config, DEFAULT_CONFIG
 # Configure logging
 logger = logging.getLogger(__name__)
 
-codex/fix-configuration-save-and-rollback-functionality
+
 # Lazily initialized OpenAI client
 _client = None
 
