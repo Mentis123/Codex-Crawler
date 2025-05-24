@@ -241,7 +241,16 @@ def main():
             """
             <style>
             .settings-btn {position: fixed; top: 15px; right: 15px; z-index: 1000;}
-            .settings-modal {position: fixed; top: 60px; right: 20px; background: rgba(31,31,48,0.95); padding: 20px; border-radius: 8px; z-index: 1000;}
+            .settings-modal {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(31,31,48,0.95);
+                padding: 20px;
+                border-radius: 8px;
+                z-index: 1000;
+            }
             </style>
             """,
             unsafe_allow_html=True,
@@ -253,36 +262,35 @@ def main():
         st.markdown("</div>", unsafe_allow_html=True)
 
         if st.session_state.show_settings:
-            with st.container():
-                st.markdown("<div class='settings-modal'>", unsafe_allow_html=True)
-                st.session_state.test_mode = st.toggle(
-                    "Test Mode",
-                    value=st.session_state.get('test_mode', False),
-                    help="In Test Mode, only Wired.com is scanned"
+            st.markdown("<div class='settings-modal'>", unsafe_allow_html=True)
+            st.session_state.test_mode = st.toggle(
+                "Test Mode",
+                value=st.session_state.get('test_mode', False),
+                help="In Test Mode, only Wired.com is scanned"
+            )
+            col1, col2 = st.columns([2, 2])
+            with col1:
+                st.session_state.time_value = st.number_input(
+                    "Time Period",
+                    min_value=1,
+                    value=st.session_state.get("time_value", 1),
+                    step=1,
                 )
-                col1, col2 = st.columns([2, 2])
-                with col1:
-                    st.session_state.time_value = st.number_input(
-                        "Time Period",
-                        min_value=1,
-                        value=st.session_state.get("time_value", 1),
-                        step=1,
-                    )
-                with col2:
-                    unit_options = ["Days", "Weeks"]
-                    default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
-                    st.session_state.time_unit = st.selectbox(
-                        "Unit",
-                        unit_options,
-                        index=default_index,
-                    )
-                fetch_button = st.button(
-                    "Fetch New Articles",
-                    disabled=st.session_state.is_fetching,
-                    type="primary",
-                    key="fetch_btn_main"
+            with col2:
+                unit_options = ["Days", "Weeks"]
+                default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
+                st.session_state.time_unit = st.selectbox(
+                    "Unit",
+                    unit_options,
+                    index=default_index,
                 )
-                st.markdown("</div>", unsafe_allow_html=True)
+            fetch_button = st.button(
+                "Fetch New Articles",
+                disabled=st.session_state.is_fetching,
+                type="primary",
+                key="fetch_btn_main"
+            )
+            st.markdown("</div>", unsafe_allow_html=True)
         else:
             fetch_button = False
 
