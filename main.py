@@ -1,5 +1,3 @@
-
-# Applying the requested UI layout and styling changes, including compact popover and updated help icon.
 import streamlit as st
 from datetime import datetime, timedelta
 from utils.content_extractor import load_source_sites, find_ai_articles, extract_full_content
@@ -46,57 +44,23 @@ st.markdown("""
         align-items: center;
         gap: 15px;
         margin-bottom: 20px;
-        position: relative;
     }
     .settings-panel {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        background: rgba(31, 31, 48, 0.98);
-        border: 2px solid #8B5CF6;
+        background: rgba(31, 31, 48, 0.95);
+        border: 1px solid rgba(250, 250, 250, 0.2);
         border-radius: 8px;
-        padding: 16px;
-        margin-top: 8px;
-        width: 280px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        z-index: 1000;
+        padding: 20px;
+        margin-bottom: 20px;
+        max-width: 300px;
     }
     .gear-button {
         background: transparent;
         border: none;
         cursor: pointer;
         padding: 5px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    /* Tighter controls styling */
-    .settings-panel .stButton {
-        margin-bottom: 8px;
-    }
-    .settings-panel .row-widget {
-        margin-bottom: 8px;
-    }
-    /* Help icon styling */
-    .help-icon {
-        width: 16px;
-        height: 16px;
-        margin-left: 4px;
     }
     .stButton button {
         width: 100%;
-    }
-    .help-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background-color: #4CAF50;
-        color: white;
-        font-size: 12px;
-        cursor: help;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -129,6 +93,12 @@ if 'initialized' not in st.session_state:
     except Exception as e:
         logger.error(f"Error initializing session state: {str(e)}")
         st.error("Error initializing application. Please refresh the page.")
+
+# We're using the utils/report_tools.py version instead
+from utils.report_tools import generate_pdf_report
+
+# We're using the utils/report_tools.py versions instead
+from utils.report_tools import generate_csv_report, generate_excel_report
 
 def update_status(message):
     """Updates the processing status in the Streamlit UI."""
@@ -172,6 +142,8 @@ def render_assessment_box(assessment: str, score: int):
         "</div>",
         unsafe_allow_html=True,
     )
+
+
 
 def process_article(article, source, cutoff_time, db, seen_urls):
     """Process a single article with optimized content extraction and analysis"""
@@ -331,18 +303,23 @@ def main():
             with st.container():
                 st.markdown('<div class="settings-panel">', unsafe_allow_html=True)
 
+                # Config button
+                if st.button("Config", key="config_btn", use_container_width=True):
+                    st.session_state.show_config = not st.session_state.show_config
+
                 # Test mode with inline help
-                help_text = st.empty()
-                test_col1, test_col2 = st.columns([8, 1])
-                with test_col1:
+                col1, col2 = st.columns([5, 1])
+                with col1:
                     st.session_state.test_mode = st.toggle(
                         "Test Mode",
                         value=st.session_state.get('test_mode', False),
                         key="test_mode_toggle",
                     )
-                with test_col2:
+                with col2:
                     st.markdown("""
-                        <div class="help-icon" title="In Test Mode, only Wired.com is scanned">?</div>
+                        <div style="margin-top:5px">
+                            <span title="In Test Mode, only Wired.com is scanned">ℹ️</span>
+                        </div>
                     """, unsafe_allow_html=True)
 
                 # Time and Unit inputs
@@ -441,6 +418,7 @@ def main():
                     if st.button("Close", key="close_config_btn"):
                         st.session_state.show_config = False
 
+
         # Separate section for displaying results
         results_section = st.container()
 
@@ -497,12 +475,15 @@ def main():
                     start_idx = batch_idx * batch_size
                     end_idx = min(start_idx + batch_size, len(sources))
                     current_batch = sources[start_idx:end_idx]
-                    
-                    batch_articles = process_batch(current_batch, cutoff_time, db, seen_urls, status_placeholder)
-                    
-                    # Add articles to session state if found
-                    if batch_articles:
-                        st.session_state.articles.extend(batch_articles)
+                    # Process current batch
+                    for source in current_batch:
+                        domain = urlparse(source).netloc or source
+                        with st.spinner(f"Researching {domain}..."):
+                            batch_articles = process_batch([source], cutoff_time, db, seen_urls, status_placeholder)
+
+                        # Add articles to session state if found
+                        if batch_articles:
+                            st.session_state.articles.extend(batch_articles)
 
                     # Update progress
                     progress = (batch_idx + 1) / total_batches
@@ -591,11 +572,54 @@ def main():
                     st.markdown("---")
                     st.markdown(f"### [{article['title']}]({article['url']})")
                     st.markdown(f"Published: {article['date']}")
-                    
+                    # Get and process the takeaway text
+                    import re
+
+                    # Helper function to clean and format takeaway text
+                    def clean_takeaway(text):
+                        # First, join any stray numbers and letters without adding extra spaces
+                        text = re.sub(r'(\d+)([a-zA-Z])', r'\1 \2', text)  # Add space between numbers and letters
+                        text = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', text)  # Add space between letters and numbers
+
+                        # Fix dollar amounts with spaces 
+                        text = re.sub(r'\$ *(\d+)', r'$\1', text)  # Remove space after $ sign
+                        text = re.sub(r'\$ *(\d+) *\. *(\d+)', r'$\1.\2', text)  # Fix spaced decimal in dollar amounts
+
+                        # Fix numbers with spaces between digits
+                        text = re.sub(r'(\d+) +(\d{3})', r'\1,\2', text)  # Convert "200 000" to "200,000"
+                        text = re.sub(r'(\d+) *\, *(\d+)', r'\1,\2', text)  # Fix spaced commas
+                        text = re.sub(r'(\d+) *\. *(\d+)', r'\1.\2', text)  # Fix spaced decimals
+
+                        # Fix trailing spaces before punctuation
+                        text = re.sub(r' +([.,!?:;])', r'\1', text)  # Remove space before punctuation
+
+                        # Fix long run-on words without adding spaces within numbers
+                        words = text.split()
+                        processed_words = []
+                        for word in words:
+                            # Don't break numbers or standard patterns
+                            if len(word) > 25 and not re.match(r'^[\d.,]+$', word):
+                                # Only break very long words
+                                chunks = [word[i:i+20] for i in range(0, len(word), 20)]
+                                processed_words.append(" ".join(chunks))
+                            else:
+                                processed_words.append(word)
+
+                        result = " ".join(processed_words)
+
+                        # Final cleanup pass for any remaining issues
+                        result = re.sub(r'(\d+) +(\d{3})', r'\1,\2', result)  # Second pass for larger numbers
+                        result = re.sub(r' +([.,!?:;])', r'\1', result)  # Final check for spaces before punctuation
+
+                        return result
+
                     takeaway_text = article.get('takeaway', 'No takeaway available')
-                    
+                    takeaway_text = clean_takeaway(takeaway_text)
+
                     # Display the takeaway with custom formatting
                     st.subheader("Takeaway")
+
+                    # Custom CSS to ensure proper text wrapping
                     st.markdown("""
                     <style>
                     .takeaway-box {
@@ -612,7 +636,7 @@ def main():
                     }
                     </style>
                     """, unsafe_allow_html=True)
-                    
+
                     st.markdown(f'<div class="takeaway-box">{takeaway_text}</div>', unsafe_allow_html=True)
 
                     # Assessment box displayed before criteria details
@@ -624,7 +648,6 @@ def main():
                     criteria = article.get('criteria_results', [])
                     with st.expander("Criteria Details", expanded=False):
                         render_criteria_dashboard(criteria)
-
         elif st.session_state.scan_complete and not st.session_state.current_articles:
             with results_section:
                 st.warning("No articles found. Please try adjusting the time period or check the source sites.")
