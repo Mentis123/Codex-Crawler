@@ -147,12 +147,11 @@ def main():
             )
             col1, col2 = st.columns([2, 2])
             with col1:
-                st.number_input(
+                st.session_state.time_value = st.number_input(
                     "Time Period",
                     min_value=1,
+                    value=st.session_state.get("time_value", 1),
                     step=1,
-                    format="%d",
-                    key="time_value",
                 )
             with col2:
                 unit_options = ["Days", "Weeks"]

@@ -10,9 +10,6 @@ An AI-powered news aggregation system that intelligently collects and analyzes A
 - Multiple export formats (PDF, CSV, Excel)
 - Modular agent-based architecture for easy customization
 
-The settings panel lets you select a lookback period by days or weeks. Use the
-number field and unit selector to control how far back in time to search.
-
 ## Technology Stack
 
 - Python 3.11

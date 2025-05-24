@@ -46,7 +46,6 @@ if 'initialized' not in st.session_state:
         st.session_state.csv_data = None  # Initialize CSV data
         st.session_state.excel_data = None  # Initialize Excel data
         st.session_state.show_settings = True  # Show settings panel on first load
-        st.session_state.show_config = False  # Hide config panel initially
         st.session_state.time_value = 1  # Default time period value
         st.session_state.time_unit = "Weeks"  # Default time period unit
         st.session_state.initialized = True
@@ -244,165 +243,67 @@ def main():
         st.markdown(
             """
             <style>
+            .header-container {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 1rem;
+            }
             .settings-btn {
                 padding: 0.5rem;
                 border-radius: 0.375rem;
                 background: transparent;
                 border: 1px solid rgba(250, 250, 250, 0.2);
                 cursor: pointer;
+                margin-top: 8px;
             }
-            .settings-console {
-                border: 1px solid rgba(250,250,250,0.2);
-                padding: 1rem;
-                border-radius: 0.5rem;
-                max-width: 300px;
-                margin: 0 auto 1rem auto;
-                text-align: center;
-            }
-            .settings-console > div {
-                margin-bottom: 0.5rem;
-            }
-            .compact-input {
-                min-height: 0;
-                padding: 0.25rem;
-            }
-            .stButton>button {
-                width: 100%;
+            .settings-btn:hover {
+                background: rgba(250, 250, 250, 0.1);
             }
             </style>
             """,
             unsafe_allow_html=True,
         )
 
-        # Header with single settings button
         header_col1, header_col2 = st.columns([1, 11])
         with header_col1:
-            if st.button("⚙️", key="settings_toggle", help="Toggle Settings"):
-                st.session_state.show_settings = not st.session_state.get("show_settings", True)
-                st.session_state.show_config = False
+            if st.button("⚙️", key="settings_btn", help="Settings", type="secondary"):
+                st.session_state.show_settings = not st.session_state.show_settings
         with header_col2:
             st.title("AI News Aggregation System")
 
         fetch_button = False
-        if st.session_state.get("show_settings", True):
-            with st.container():
-                st.markdown('<div class="settings-console">', unsafe_allow_html=True)
-                
-                # Config button
-                if st.button("Config", key="config_btn", use_container_width=True):
-                    st.session_state.show_config = not st.session_state.show_config
-                
-                # Test mode with inline help
-                col1, col2 = st.columns([5, 1])
-                with col1:
-                    st.session_state.test_mode = st.toggle(
-                        "Test Mode",
-                        value=st.session_state.get('test_mode', False),
-                        key="test_mode_toggle",
-                    )
-                with col2:
-                    st.markdown("""
-                        <div style="margin-top:5px">
-                            <span title="In Test Mode, only Wired.com is scanned">ℹ️</span>
-                        </div>
-                    """, unsafe_allow_html=True)
-                
-                # Time and Unit inputs
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.number_input(
-                        "Time",
-                        min_value=1,
-                        step=1,
-                        format="%d",
-                        key="time_value",
-                        label_visibility="collapsed"
-                    )
-                with col2:
-                    unit_options = ["Days", "Weeks"]
-                    default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
-                    st.session_state.time_unit = st.selectbox(
-                        "Unit",
-                        unit_options,
-                        index=default_index,
-                        key="time_unit_select",
-                        label_visibility="collapsed"
-                    )
-
-                # Fetch button
+        if st.session_state.show_settings:
+            st.markdown("### Settings")
+            st.session_state.test_mode = st.toggle(
+                "Test Mode",
+                value=st.session_state.get('test_mode', False),
+                help="In Test Mode, only Wired.com is scanned"
+            )
+            col1, col2 = st.columns([2, 2])
+            with col1:
+                st.session_state.time_value = st.number_input(
+                    "Time Period",
+                    min_value=1,
+                    value=st.session_state.get("time_value", 1),
+                    step=1,
+                )
+            with col2:
+                unit_options = ["Days", "Weeks"]
+                default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
+                st.session_state.time_unit = st.selectbox(
+                    "Unit",
+                    unit_options,
+                    index=default_index,
+                )
                 fetch_button = st.button(
-                    "Fetch Articles",
+                    "Fetch New Articles", 
                     disabled=st.session_state.is_fetching,
                     type="primary",
-                    key="fetch_btn_main",
-                    use_container_width=True,
+                    key="fetch_btn_main"
                 )
                 if fetch_button:
                     st.session_state.show_settings = False
-                    st.session_state.show_config = False
-
-                st.markdown('</div>', unsafe_allow_html=True)
-
-            if st.session_state.show_config:
-                from utils.config_manager import load_config, save_config
-                st.markdown("### Configuration")
-                config_data = load_config()
-                eval_cfg = config_data.get("evaluation", {})
-
-                companies = st.text_area(
-                    "Companies (comma separated)",
-                    ", ".join(eval_cfg.get("companies", [])),
-                )
-                tools = st.text_area(
-                    "Tools (comma separated)",
-                    ", ".join(eval_cfg.get("tools", [])),
-                )
-                retail_terms = st.text_area(
-                    "Retail Terms (comma separated)",
-                    ", ".join(eval_cfg.get("retail_terms", [])),
-                )
-                roi_pattern = st.text_input(
-                    "ROI Regex Pattern",
-                    eval_cfg.get("roi_pattern", ""),
-                )
-                promo_pattern = st.text_input(
-                    "Promotional Regex Pattern",
-                    eval_cfg.get("promotional_pattern", ""),
-                )
-                deployment_terms = st.text_area(
-                    "Deployment Terms (comma separated)",
-                    ", ".join(eval_cfg.get("deployment_terms", [])),
-                )
-                major_platforms = st.text_area(
-                    "Major Platforms (comma separated)",
-                    ", ".join(eval_cfg.get("major_platforms", [])),
-                )
-                rubric = st.text_area(
-                    "Takeaway Rubric",
-                    config_data.get("takeaway_rubric", ""),
-                    height=150,
-                )
-                cfg_col1, cfg_col2 = st.columns(2)
-                with cfg_col1:
-                    if st.button("Save Configuration", key="save_config_btn"):
-                        global evaluation_agent
-                        eval_cfg["companies"] = [c.strip() for c in companies.split(",") if c.strip()]
-                        eval_cfg["tools"] = [t.strip() for t in tools.split(",") if t.strip()]
-                        eval_cfg["retail_terms"] = [r.strip() for r in retail_terms.split(",") if r.strip()]
-                        eval_cfg["roi_pattern"] = roi_pattern
-                        eval_cfg["promotional_pattern"] = promo_pattern
-                        eval_cfg["deployment_terms"] = [d.strip() for d in deployment_terms.split(",") if d.strip()]
-                        eval_cfg["major_platforms"] = [m.strip() for m in major_platforms.split(",") if m.strip()]
-                        config_data["evaluation"] = eval_cfg
-                        config_data["takeaway_rubric"] = rubric
-                        save_config(config_data)
-                        evaluation_agent = EvaluationAgent()
-                        st.session_state.show_config = False
-                        st.success("Configuration saved.")
-                with cfg_col2:
-                    if st.button("Close", key="close_config_btn"):
-                        st.session_state.show_config = False
-
 
         # Separate section for displaying results
         results_section = st.container()
@@ -435,25 +336,23 @@ def main():
                 batch_size = 5
                 total_batches = (len(sources) + batch_size - 1) // batch_size
 
-                # Calculate cutoff time once using the selected unit
-                if st.session_state.time_unit == "Weeks":
-                    days_to_subtract = st.session_state.time_value * 7
-                else:
-                    days_to_subtract = st.session_state.time_value
-
-                cutoff_time = datetime.now() - timedelta(days=days_to_subtract)
-                logger.info(
-                    f"Time period: {st.session_state.time_value} {st.session_state.time_unit}, Cutoff: {cutoff_time} (Including articles newer than this date)"
-                )
-
-                st.write(
-                    f"Scanning articles from the last {st.session_state.time_value} {st.session_state.time_unit.lower()} (since {cutoff_time.strftime('%Y-%m-%d')})"
-                )
-
                 for batch_idx in range(total_batches):
                     start_idx = batch_idx * batch_size
                     end_idx = min(start_idx + batch_size, len(sources))
                     current_batch = sources[start_idx:end_idx]
+
+                    # Calculate cutoff time based on selected unit - looking BACK in time
+                    if st.session_state.time_unit == "Weeks":
+                        days_to_subtract = st.session_state.time_value * 7
+                    else:  # Days
+                        days_to_subtract = st.session_state.time_value
+
+                    # Create a cutoff_time in the past
+                    cutoff_time = datetime.now() - timedelta(days=days_to_subtract)
+                    logger.info(
+                        f"Time period: {st.session_state.time_value} {st.session_state.time_unit}, Cutoff: {cutoff_time} (Including articles newer than this date)"
+                    )
+
                     # Process current batch
                     for source in current_batch:
                         domain = urlparse(source).netloc or source
