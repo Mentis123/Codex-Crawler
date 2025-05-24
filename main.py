@@ -284,6 +284,8 @@ def main():
             st.session_state.excel_data = None
             st.session_state.scan_complete = False
             st.session_state.articles = []
+            # Hide settings panel after initiating fetch
+            st.session_state.show_settings = False
 
         if fetch_button or st.session_state.is_fetching:
             try:
