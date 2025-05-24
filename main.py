@@ -29,6 +29,9 @@ logger = logging.getLogger(__name__)
 # Initialize evaluation agent
 evaluation_agent = EvaluationAgent()
 
+# Fallback for Streamlit versions without `st.dialog`
+dialog_fn = getattr(st, "dialog", st.experimental_dialog)
+
 # Initialize session state before anything else
 if 'initialized' not in st.session_state:
     try:
@@ -246,16 +249,6 @@ def main():
             """
             <style>
             .settings-btn {position: fixed; top: 15px; right: 15px; z-index: 1000;}
-            .settings-modal {
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: rgba(31,31,48,0.95);
-                padding: 20px;
-                border-radius: 8px;
-                z-index: 1000;
-            }
             </style>
             """,
             unsafe_allow_html=True,
@@ -266,38 +259,38 @@ def main():
             st.session_state.show_settings = not st.session_state.show_settings
         st.markdown("</div>", unsafe_allow_html=True)
 
+        fetch_button = False
         if st.session_state.show_settings:
-            st.markdown("<div class='settings-modal'>", unsafe_allow_html=True)
-            st.session_state.test_mode = st.toggle(
-                "Test Mode",
-                value=st.session_state.get('test_mode', False),
-                help="In Test Mode, only Wired.com is scanned"
-            )
-            col1, col2 = st.columns([2, 2])
-            with col1:
-                st.session_state.time_value = st.number_input(
-                    "Time Period",
-                    min_value=1,
-                    value=st.session_state.get("time_value", 1),
-                    step=1,
+            with dialog_fn("Settings", key="settings_dialog"):
+                st.session_state.test_mode = st.toggle(
+                    "Test Mode",
+                    value=st.session_state.get('test_mode', False),
+                    help="In Test Mode, only Wired.com is scanned"
                 )
-            with col2:
-                unit_options = ["Days", "Weeks"]
-                default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
-                st.session_state.time_unit = st.selectbox(
-                    "Unit",
-                    unit_options,
-                    index=default_index,
+                col1, col2 = st.columns([2, 2])
+                with col1:
+                    st.session_state.time_value = st.number_input(
+                        "Time Period",
+                        min_value=1,
+                        value=st.session_state.get("time_value", 1),
+                        step=1,
+                    )
+                with col2:
+                    unit_options = ["Days", "Weeks"]
+                    default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
+                    st.session_state.time_unit = st.selectbox(
+                        "Unit",
+                        unit_options,
+                        index=default_index,
+                    )
+                fetch_button = st.button(
+                    "Fetch New Articles",
+                    disabled=st.session_state.is_fetching,
+                    type="primary",
+                    key="fetch_btn_main"
                 )
-            fetch_button = st.button(
-                "Fetch New Articles",
-                disabled=st.session_state.is_fetching,
-                type="primary",
-                key="fetch_btn_main"
-            )
-            st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            fetch_button = False
+                if fetch_button:
+                    st.session_state.show_settings = False
 
         # Separate section for displaying results
         results_section = st.container()
