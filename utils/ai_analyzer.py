@@ -13,8 +13,14 @@ from utils.config_manager import load_config, DEFAULT_CONFIG
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+# Lazily initialized OpenAI client
+_client = None
+
+def _get_client():
+    global _client
+    if _client is None:
+        _client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    return _client
 
 # Simple in-memory cache for API responses
 _cache = {}
@@ -114,7 +120,7 @@ def _process_chunk(chunk: str) -> Optional[Dict[str, Any]]:
 
         try:
             # Use an explicit model with timeout and retry mechanism
-            response = client.chat.completions.create(
+            response = _get_client().chat.completions.create(
                 model="gpt-4o",  # Using gpt-4o for better balance of speed and quality
                 messages=[
                     {"role": "system", "content": "You are a JSON generator. You must return ONLY valid, complete JSON in format {\"takeaway\": \"text\"}. Ensure all quotes are properly escaped and closed."},
@@ -196,7 +202,7 @@ def _combine_summaries(summaries: List[Dict[str, Any]]) -> Dict[str, Any]:
 
         try:
             # Use an explicit model with better error handling
-            response = client.chat.completions.create(
+            response = _get_client().chat.completions.create(
                 model="gpt-4o",  # Using gpt-4o for balance of speed and quality
                 messages=[
                     {"role": "system", "content": "You are a JSON generator. You must return ONLY valid, complete JSON in format {\"takeaway\": \"text\"}. Ensure all quotes are properly escaped and closed."},

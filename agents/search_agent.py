@@ -237,14 +237,9 @@ def summarize_article(content):
 
 
 def validate_ai_relevance(article_data):
-codex/ensure-proper-file-endings-for-.py-and-.md
-    #Implementation needed here. Returns a dict with {'is_relevant':bool, 'reason':str}
-    return {"is_relevant": True, "reason": "Placeholder reason"}
-
     """Check if an article is relevant to AI topics."""
     try:
         return ce_validate_ai_relevance(article_data)
     except Exception as e:
         print(f"AI relevance validation failed: {e}")
         return {"is_relevant": True, "reason": "Validation error"}
-main
