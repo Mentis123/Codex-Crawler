@@ -290,8 +290,7 @@ def main():
 
         with header_col1:
             # Conditionally display settings panel
-            gear_clicked = st.button("⚙️", key="settings_toggle", help="Toggle Settings",
-                                     css={"background": "none", "border": "none", "padding": "0"})
+            gear_clicked = st.button("⚙️", key="settings_toggle", help="Toggle Settings")
             if gear_clicked:
                 st.session_state.show_settings = not st.session_state.get("show_settings", True)
                 st.session_state.show_config = False
