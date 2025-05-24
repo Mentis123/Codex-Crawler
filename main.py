@@ -239,21 +239,32 @@ def main():
         # Add simple particle effect background
         add_simple_particles()
 
-        # Custom header with settings button
+        # Remove default streamlit margins
         st.markdown(
             """
             <style>
+            .main > div {
+                padding-top: 1rem;
+            }
             .header-container {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                padding: 1rem 0;
+                margin-bottom: 2rem;
+                gap: 1rem;
+            }
+            .title-container {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                flex-grow: 1;
             }
             .title-text {
                 margin: 0;
-                font-size: 2rem;
+                padding: 0;
+                font-size: 2.5rem;
+                line-height: 1.2;
                 font-weight: bold;
-                flex-grow: 1;
             }
             .settings-btn {
                 padding: 8px;
@@ -266,20 +277,18 @@ def main():
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                margin-left: auto;
             }
             .settings-btn:hover {
                 background: rgba(250, 250, 250, 0.1);
             }
             </style>
             <div class="header-container">
-                <h1 class="title-text">AI News Aggregation System</h1>
+                <div class="title-container">
+                    <h1 class="title-text">AI News Aggregation System</h1>
+                </div>
                 <button class="settings-btn" id="settings-toggle" title="Settings">⚙️</button>
             </div>
-            <script>
-                document.getElementById('settings-toggle').onclick = function() {
-                    window.streamlitSettings = !window.streamlitSettings;
-                }
-            </script>
             """,
             unsafe_allow_html=True,
         )
