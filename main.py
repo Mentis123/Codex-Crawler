@@ -283,7 +283,14 @@ def main():
             st.markdown(
                 """
                 <style>
-                .settings-console {border:1px solid rgba(250,250,250,0.2); padding:0.5rem; border-radius:0.5rem; width:220px;}
+                .settings-console {
+                    border:1px solid rgba(250,250,250,0.2);
+                    padding:0.5rem;
+                    border-radius:0.5rem;
+                    width:220px;
+                }
+                .settings-console > div {margin-bottom:4px;}
+                .settings-console > div:last-child {margin-bottom:0;}
                 .settings-console .stButton>button {width:100%;}
                 </style>
                 """,
@@ -301,14 +308,24 @@ def main():
                     if st.button("Config", key="config_btn", use_container_width=True):
                         st.session_state.show_config = not st.session_state.show_config
 
-                st.session_state.test_mode = st.toggle(
-                    "Test Mode",
-                    value=st.session_state.get('test_mode', False),
-                    help="In Test Mode, only Wired.com is scanned"
-                )
-
-                row2_col1, row2_col2 = st.columns(2)
+                row2_col1, row2_col2 = st.columns([3, 1])
                 with row2_col1:
+                    st.session_state.test_mode = st.toggle(
+                        "Test Mode",
+                        value=st.session_state.get('test_mode', False),
+                        key="test_mode_toggle",
+                    )
+                with row2_col2:
+                    st.button(
+                        "❓",
+                        key="test_mode_help",
+                        help="In Test Mode, only Wired.com is scanned",
+                        type="secondary",
+                        use_container_width=True,
+                    )
+
+                row3_col1, row3_col2 = st.columns(2)
+                with row3_col1:
                     st.number_input(
                         "Time",
                         min_value=1,
@@ -316,7 +333,7 @@ def main():
                         format="%d",
                         key="time_value",
                     )
-                with row2_col2:
+                with row3_col2:
                     unit_options = ["Days", "Weeks"]
                     default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
                     st.session_state.time_unit = st.selectbox(
