@@ -1,3 +1,4 @@
+# Applying the requested UI layout and styling changes, including compact popover and updated help icon.
 import streamlit as st
 from datetime import datetime, timedelta
 from utils.content_extractor import load_source_sites, find_ai_articles, extract_full_content
@@ -61,6 +62,18 @@ st.markdown("""
     }
     .stButton button {
         width: 100%;
+    }
+    .help-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: #4CAF50;
+        color: white;
+        font-size: 12px;
+        cursor: help;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -303,23 +316,18 @@ def main():
             with st.container():
                 st.markdown('<div class="settings-panel">', unsafe_allow_html=True)
 
-                # Config button
-                if st.button("Config", key="config_btn", use_container_width=True):
-                    st.session_state.show_config = not st.session_state.show_config
-
                 # Test mode with inline help
-                col1, col2 = st.columns([5, 1])
-                with col1:
+                help_text = st.empty()
+                test_col1, test_col2 = st.columns([8, 1])
+                with test_col1:
                     st.session_state.test_mode = st.toggle(
                         "Test Mode",
                         value=st.session_state.get('test_mode', False),
                         key="test_mode_toggle",
                     )
-                with col2:
+                with test_col2:
                     st.markdown("""
-                        <div style="margin-top:5px">
-                            <span title="In Test Mode, only Wired.com is scanned">ℹ️</span>
-                        </div>
+                        <div class="help-icon" title="In Test Mode, only Wired.com is scanned">?</div>
                     """, unsafe_allow_html=True)
 
                 # Time and Unit inputs
@@ -658,3 +666,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+</replit_final_file>
