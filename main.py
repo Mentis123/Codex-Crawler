@@ -281,7 +281,7 @@ def main():
             ):
                 st.session_state.show_settings = not st.session_state.show_settings
         with header_col2:
-            st.title("AI News Aggregation System")
+            st.title("GAI Insights Crocs Monitoring Service")
 
         from utils.ui_components import render_settings_drawer
 

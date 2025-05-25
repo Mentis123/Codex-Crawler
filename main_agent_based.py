@@ -111,7 +111,7 @@ def main():
         # Add background effect
         add_simple_particles()
 
-        st.title("AI News Aggregation System")
+        st.title("GAI Insights Crocs Monitoring Service")
 
         # Floating settings button and modal
         st.markdown(
