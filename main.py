@@ -296,6 +296,8 @@ def main():
         if fetch_button:
             # First hide settings panel
             st.session_state.show_settings = False
+            # Close the drawer via query param so it disappears on rerun
+            st.experimental_set_query_params(close_settings="1")
             # Then reset state for a new scan
             st.session_state.is_fetching = True
             st.session_state.pdf_data = None

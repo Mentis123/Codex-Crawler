@@ -125,6 +125,13 @@ def render_settings_drawer():
                 type="primary",
                 key="fetch_btn",
             )
+            if fetch_button:
+                # Hide the drawer immediately when starting a fetch
+                st.session_state.show_settings = False
+                st.markdown(
+                    "<script>window.hideSettingsDrawer && window.hideSettingsDrawer();</script>",
+                    unsafe_allow_html=True,
+                )
 
             config_saved = False
             with st.expander("Configuration", expanded=False):
