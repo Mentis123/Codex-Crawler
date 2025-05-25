@@ -71,18 +71,14 @@ def render_settings_drawer():
         }
         </style>
         <script>
-        function hideSettingsDrawer() {
-            const overlay = document.querySelector('.settings-overlay');
-            const drawer = document.querySelector('.settings-drawer');
-            if (overlay) overlay.classList.remove('visible');
-            if (drawer) drawer.classList.remove('visible');
+        window.hideSettingsDrawer = function() {
             const url = new URL(window.location.href);
             url.searchParams.set('close_settings', '1');
             window.location.href = url.toString();
         }
-        document.addEventListener('keydown', (e) => {
+        window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                hideSettingsDrawer();
+                window.hideSettingsDrawer();
             }
         });
         </script>
@@ -97,7 +93,7 @@ def render_settings_drawer():
         f"""
         <div class="settings-overlay{'visible' if st.session_state.show_settings else ''}" onclick="hideSettingsDrawer();"></div>
         <div class="settings-drawer{'visible' if st.session_state.show_settings else ''}">
-        <button class="close-btn" onclick="hideSettingsDrawer();">✖</button>
+        <button class="close-btn" onClick={hideSettingsDrawer}>✖</button>
         """,
         unsafe_allow_html=True
     )
