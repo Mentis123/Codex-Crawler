@@ -1,4 +1,3 @@
-
 import streamlit as st
 
 def render_settings_drawer():
@@ -34,9 +33,6 @@ def render_settings_drawer():
             z-index: 1000;
             cursor: pointer;
         }
-        .settings-drawer:not(.show), .settings-overlay:not(.show) {
-            display: none;
-        }
         .close-btn {
             position: absolute;
             top: 10px;
@@ -60,40 +56,14 @@ def render_settings_drawer():
         unsafe_allow_html=True,
     )
 
-    drawer_visible = st.session_state.get("show_settings", False)
-    visibility_class = "show" if drawer_visible else ""
+    if "show_settings" not in st.session_state:
+        st.session_state.show_settings = False
 
-    st.markdown(
-        f"""
-        <div class="settings-overlay {visibility_class}" id="settings-overlay"></div>
-        <div class="settings-drawer {visibility_class}" id="settings-drawer">
-            <button class="close-btn" id="close-settings-btn">✖</button>
-            <div class="settings-content">
-                <h3 style="margin-bottom: 20px;">Settings</h3>
-                {st._main_component.html('''
-                    <script>
-                        function closeSettings() {{
-                            window.parent.postMessage({{
-                                type: 'streamlit:setComponentValue',
-                                value: false,
-                                key: 'show_settings'
-                            }}, '*');
-                        }}
-                        
-                        document.getElementById('settings-overlay').addEventListener('click', closeSettings);
-                        document.getElementById('close-settings-btn').addEventListener('click', closeSettings);
-                        document.addEventListener('keydown', (e) => {{
-                            if (e.key === 'Escape') closeSettings();
-                        }});
-                    </script>
-                ''')}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    if st.button("✖", key="close_settings"):
+        st.session_state.show_settings = False
+        st.rerun()
 
-    if drawer_visible:
+    if st.session_state.show_settings:
         with st.container():
             st.session_state.test_mode = st.toggle(
                 "Test Mode",
@@ -120,7 +90,7 @@ def render_settings_drawer():
 
             fetch_button = st.button(
                 "Fetch New Articles",
-                disabled=st.session_state.is_fetching,
+                disabled=st.session_state.get("is_fetching", False),
                 type="primary",
                 key="fetch_btn",
             )
