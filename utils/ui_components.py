@@ -1,7 +1,17 @@
 import streamlit as st
 
+
+def _close_settings_param_check():
+    """Check query params to determine if the settings drawer should be closed."""
+    params = st.query_params  # newer API
+    if params.get("close_settings") == "1":
+        st.session_state.show_settings = False
+        st.experimental_set_query_params(close_settings=None)
+
+
 def render_settings_drawer():
     """Render a slide-out settings drawer and return button states."""
+    _close_settings_param_check()
     st.markdown(
         """
         <style>
@@ -66,6 +76,9 @@ def render_settings_drawer():
             const drawer = document.querySelector('.settings-drawer');
             if (overlay) overlay.classList.remove('visible');
             if (drawer) drawer.classList.remove('visible');
+            const url = new URL(window.location.href);
+            url.searchParams.set('close_settings', '1');
+            window.location.href = url.toString();
         }
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
