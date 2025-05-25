@@ -51,21 +51,6 @@ def render_settings_drawer():
         .settings-overlay.visible {
             display: block;
         }
-        .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: transparent;
-            border: none;
-            color: #fafafa;
-            font-size: 1.2rem;
-            cursor: pointer;
-            padding: 5px 10px;
-            z-index: 1002;
-        }
-        .close-btn:hover {
-            color: #ff6b6b;
-        }
         .settings-content {
             margin-top: 10px;
         }
@@ -93,7 +78,6 @@ def render_settings_drawer():
         f"""
         <div class="settings-overlay{'visible' if st.session_state.show_settings else ''}" onclick="window.hideSettingsDrawer();"></div>
         <div class="settings-drawer{'visible' if st.session_state.show_settings else ''}">
-        <button class="close-btn" onclick="window.hideSettingsDrawer()">✖</button>
         """,
         unsafe_allow_html=True
     )
