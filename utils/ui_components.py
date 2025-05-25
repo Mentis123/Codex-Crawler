@@ -113,6 +113,7 @@ def render_settings_drawer():
                     min_value=1,
                     value=st.session_state.get("time_value", 1),
                     step=1,
+                    key="time_value_input",
                 )
             with col2:
                 unit_options = ["Days", "Weeks"]
