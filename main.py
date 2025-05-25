@@ -239,6 +239,10 @@ def main():
         # Add simple particle effect background
         add_simple_particles()
 
+        # Ensure settings drawer is hidden while fetching
+        if st.session_state.get("is_fetching", False):
+            st.session_state.show_settings = False
+
         # Custom header with settings button
         st.markdown(
             """
@@ -267,7 +271,14 @@ def main():
 
         header_col1, header_col2 = st.columns([1, 11])
         with header_col1:
-            if st.button("⚙️", key="settings_btn", help="Settings", type="secondary"):
+            gear_disabled = st.session_state.get("is_fetching", False)
+            if st.button(
+                "⚙️",
+                key="settings_btn",
+                help="Settings",
+                type="secondary",
+                disabled=gear_disabled,
+            ):
                 st.session_state.show_settings = not st.session_state.show_settings
         with header_col2:
             st.title("AI News Aggregation System")
