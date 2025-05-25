@@ -32,17 +32,10 @@ def render_settings_drawer():
             height: 100vh;
             background: rgba(0,0,0,0.5);
             z-index: 1000;
-            transition: all 0.3s ease-in-out;
+            cursor: pointer;
         }
-        .settings-drawer:not(.visible), .settings-overlay:not(.visible) {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-        }
-        .settings-drawer.visible, .settings-overlay.visible {
-            opacity: 1;
-            visibility: visible;
-            pointer-events: auto;
+        .settings-drawer:not(.show), .settings-overlay:not(.show) {
+            display: none;
         }
         .close-btn {
             position: absolute;
@@ -54,12 +47,13 @@ def render_settings_drawer():
             font-size: 1.2rem;
             cursor: pointer;
             padding: 5px 10px;
+            z-index: 1002;
         }
         .close-btn:hover {
             color: #ff6b6b;
         }
         .settings-content {
-            margin-top: 20px;
+            margin-top: 10px;
         }
         </style>
         """,
@@ -67,7 +61,7 @@ def render_settings_drawer():
     )
 
     drawer_visible = st.session_state.get("show_settings", False)
-    visibility_class = "visible" if drawer_visible else ""
+    visibility_class = "show" if drawer_visible else ""
 
     st.markdown(
         f"""
@@ -75,123 +69,117 @@ def render_settings_drawer():
         <div class="settings-drawer {visibility_class}" id="settings-drawer">
             <button class="close-btn" id="close-settings-btn">✖</button>
             <div class="settings-content">
-                <h3>Settings</h3>
+                <h3 style="margin-bottom: 20px;">Settings</h3>
+                {st._main_component.html('''
+                    <script>
+                        function closeSettings() {{
+                            window.parent.postMessage({{
+                                type: 'streamlit:setComponentValue',
+                                value: false,
+                                key: 'show_settings'
+                            }}, '*');
+                        }}
+                        
+                        document.getElementById('settings-overlay').addEventListener('click', closeSettings);
+                        document.getElementById('close-settings-btn').addEventListener('click', closeSettings);
+                        document.addEventListener('keydown', (e) => {{
+                            if (e.key === 'Escape') closeSettings();
+                        }});
+                    </script>
+                ''')}
             </div>
         </div>
-        <script>
-            (function() {{
-                const drawer = document.getElementById('settings-drawer');
-                const overlay = document.getElementById('settings-overlay');
-                const closeBtn = document.getElementById('close-settings-btn');
-                
-                function closeDrawer() {{
-                    const closeButton = window.parent.document.querySelector('button[kind="secondary"]');
-                    if (closeButton) closeButton.click();
-                }}
-                
-                if (closeBtn) {{
-                    closeBtn.addEventListener('click', closeDrawer);
-                }}
-                
-                if (overlay) {{
-                    overlay.addEventListener('click', closeDrawer);
-                }}
-                
-                document.addEventListener('keydown', (e) => {{
-                    if (e.key === 'Escape') {{
-                        closeDrawer();
-                    }}
-                }});
-            }})();
-        </script>
         """,
         unsafe_allow_html=True
     )
 
-    with st.container():
-        st.session_state.test_mode = st.toggle(
-            "Test Mode",
-            value=st.session_state.get('test_mode', False),
-            help="In Test Mode, only Wired.com is scanned",
-        )
-
-        col1, col2 = st.columns([2, 2])
-        with col1:
-            st.session_state.time_value = st.number_input(
-                "Time Period",
-                min_value=1,
-                value=st.session_state.get("time_value", 1),
-                step=1,
-            )
-        with col2:
-            unit_options = ["Days", "Weeks"]
-            default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
-            st.session_state.time_unit = st.selectbox(
-                "Unit",
-                unit_options,
-                index=default_index,
+    if drawer_visible:
+        with st.container():
+            st.session_state.test_mode = st.toggle(
+                "Test Mode",
+                value=st.session_state.get('test_mode', False),
+                help="In Test Mode, only Wired.com is scanned",
             )
 
-        fetch_button = st.button(
-            "Fetch New Articles",
-            disabled=st.session_state.is_fetching,
-            type="primary",
-            key="fetch_btn",
-        )
+            col1, col2 = st.columns([2, 2])
+            with col1:
+                st.session_state.time_value = st.number_input(
+                    "Time Period",
+                    min_value=1,
+                    value=st.session_state.get("time_value", 1),
+                    step=1,
+                )
+            with col2:
+                unit_options = ["Days", "Weeks"]
+                default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
+                st.session_state.time_unit = st.selectbox(
+                    "Unit",
+                    unit_options,
+                    index=default_index,
+                )
 
-        config_saved = False
-        with st.expander("Configuration", expanded=False):
-            from utils.config_manager import load_config, save_config
-
-            config_data = load_config()
-            eval_cfg = config_data.get("evaluation", {})
-
-            companies = st.text_area(
-                "Companies (comma separated)",
-                ", ".join(eval_cfg.get("companies", [])),
-            )
-            tools = st.text_area(
-                "Tools (comma separated)",
-                ", ".join(eval_cfg.get("tools", [])),
-            )
-            retail_terms = st.text_area(
-                "Retail Terms (comma separated)",
-                ", ".join(eval_cfg.get("retail_terms", [])),
-            )
-            roi_pattern = st.text_input(
-                "ROI Regex Pattern",
-                eval_cfg.get("roi_pattern", ""),
-            )
-            promo_pattern = st.text_input(
-                "Promotional Regex Pattern",
-                eval_cfg.get("promotional_pattern", ""),
-            )
-            deployment_terms = st.text_area(
-                "Deployment Terms (comma separated)",
-                ", ".join(eval_cfg.get("deployment_terms", [])),
-            )
-            major_platforms = st.text_area(
-                "Major Platforms (comma separated)",
-                ", ".join(eval_cfg.get("major_platforms", [])),
-            )
-            rubric = st.text_area(
-                "Takeaway Rubric",
-                config_data.get("takeaway_rubric", ""),
-                height=150,
+            fetch_button = st.button(
+                "Fetch New Articles",
+                disabled=st.session_state.is_fetching,
+                type="primary",
+                key="fetch_btn",
             )
 
-            if st.button("Save Configuration", key="save_config_btn"):
-                eval_cfg["companies"] = [c.strip() for c in companies.split(",") if c.strip()]
-                eval_cfg["tools"] = [t.strip() for t in tools.split(",") if t.strip()]
-                eval_cfg["retail_terms"] = [r.strip() for r in retail_terms.split(",") if r.strip()]
-                eval_cfg["roi_pattern"] = roi_pattern
-                eval_cfg["promotional_pattern"] = promo_pattern
-                eval_cfg["deployment_terms"] = [d.strip() for d in deployment_terms.split(",") if d.strip()]
-                eval_cfg["major_platforms"] = [m.strip() for m in major_platforms.split(",") if m.strip()]
-                config_data["evaluation"] = eval_cfg
-                config_data["takeaway_rubric"] = rubric
-                save_config(config_data)
-                config_saved = True
-                st.success("Configuration saved.")
+            config_saved = False
+            with st.expander("Configuration", expanded=False):
+                from utils.config_manager import load_config, save_config
 
-    return fetch_button, config_saved
+                config_data = load_config()
+                eval_cfg = config_data.get("evaluation", {})
+
+                companies = st.text_area(
+                    "Companies (comma separated)",
+                    ", ".join(eval_cfg.get("companies", [])),
+                )
+                tools = st.text_area(
+                    "Tools (comma separated)",
+                    ", ".join(eval_cfg.get("tools", [])),
+                )
+                retail_terms = st.text_area(
+                    "Retail Terms (comma separated)",
+                    ", ".join(eval_cfg.get("retail_terms", [])),
+                )
+                roi_pattern = st.text_input(
+                    "ROI Regex Pattern",
+                    eval_cfg.get("roi_pattern", ""),
+                )
+                promo_pattern = st.text_input(
+                    "Promotional Regex Pattern",
+                    eval_cfg.get("promotional_pattern", ""),
+                )
+                deployment_terms = st.text_area(
+                    "Deployment Terms (comma separated)",
+                    ", ".join(eval_cfg.get("deployment_terms", [])),
+                )
+                major_platforms = st.text_area(
+                    "Major Platforms (comma separated)",
+                    ", ".join(eval_cfg.get("major_platforms", [])),
+                )
+                rubric = st.text_area(
+                    "Takeaway Rubric",
+                    config_data.get("takeaway_rubric", ""),
+                    height=150,
+                )
+
+                if st.button("Save Configuration", key="save_config_btn"):
+                    eval_cfg["companies"] = [c.strip() for c in companies.split(",") if c.strip()]
+                    eval_cfg["tools"] = [t.strip() for t in tools.split(",") if t.strip()]
+                    eval_cfg["retail_terms"] = [r.strip() for r in retail_terms.split(",") if r.strip()]
+                    eval_cfg["roi_pattern"] = roi_pattern
+                    eval_cfg["promotional_pattern"] = promo_pattern
+                    eval_cfg["deployment_terms"] = [d.strip() for d in deployment_terms.split(",") if d.strip()]
+                    eval_cfg["major_platforms"] = [m.strip() for m in major_platforms.split(",") if m.strip()]
+                    config_data["evaluation"] = eval_cfg
+                    config_data["takeaway_rubric"] = rubric
+                    save_config(config_data)
+                    config_saved = True
+                    st.success("Configuration saved.")
+
+            return fetch_button, config_saved
+
+    return None, False
