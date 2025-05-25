@@ -6,6 +6,7 @@ def render_settings_drawer():
         """
         <style>
         .settings-drawer {
+            display: none;
             position: fixed;
             top: 50%;
             left: 50%;
@@ -17,13 +18,17 @@ def render_settings_drawer():
             padding: 20px 16px;
             overflow-y: auto;
             z-index: 1001;
-            transition: opacity 0.3s ease-in-out;
+            transition: all 0.3s ease-in-out;
             backdrop-filter: blur(10px);
-            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
             border: 2px solid #8000ff;
             border-radius: 6px;
         }
+        .settings-drawer.visible {
+            display: block;
+        }
         .settings-overlay {
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
@@ -32,6 +37,9 @@ def render_settings_drawer():
             background: rgba(0,0,0,0.5);
             z-index: 1000;
             cursor: pointer;
+        }
+        .settings-overlay.visible {
+            display: block;
         }
         .close-btn {
             position: absolute;
@@ -59,9 +67,14 @@ def render_settings_drawer():
     if "show_settings" not in st.session_state:
         st.session_state.show_settings = False
 
-    if st.button("✖", key="close_settings"):
-        st.session_state.show_settings = False
-        st.rerun()
+    st.markdown(
+        f"""
+        <div class="settings-overlay{'visible' if st.session_state.show_settings else ''}" onclick="document.querySelector('.settings-overlay').classList.remove('visible'); document.querySelector('.settings-drawer').classList.remove('visible');"></div>
+        <div class="settings-drawer{'visible' if st.session_state.show_settings else ''}">
+        <button class="close-btn" onclick="document.querySelector('.settings-overlay').classList.remove('visible'); document.querySelector('.settings-drawer').classList.remove('visible');">✖</button>
+        """,
+        unsafe_allow_html=True
+    )
 
     if st.session_state.show_settings:
         with st.container():
