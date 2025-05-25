@@ -60,6 +60,19 @@ def render_settings_drawer():
             margin-top: 10px;
         }
         </style>
+        <script>
+        function hideSettingsDrawer() {
+            const overlay = document.querySelector('.settings-overlay');
+            const drawer = document.querySelector('.settings-drawer');
+            if (overlay) overlay.classList.remove('visible');
+            if (drawer) drawer.classList.remove('visible');
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideSettingsDrawer();
+            }
+        });
+        </script>
         """,
         unsafe_allow_html=True,
     )
@@ -69,9 +82,9 @@ def render_settings_drawer():
 
     st.markdown(
         f"""
-        <div class="settings-overlay{'visible' if st.session_state.show_settings else ''}" onclick="document.querySelector('.settings-overlay').classList.remove('visible'); document.querySelector('.settings-drawer').classList.remove('visible');"></div>
+        <div class="settings-overlay{'visible' if st.session_state.show_settings else ''}" onclick="hideSettingsDrawer();"></div>
         <div class="settings-drawer{'visible' if st.session_state.show_settings else ''}">
-        <button class="close-btn" onclick="document.querySelector('.settings-overlay').classList.remove('visible'); document.querySelector('.settings-drawer').classList.remove('visible');">✖</button>
+        <button class="close-btn" onclick="hideSettingsDrawer();">✖</button>
         """,
         unsafe_allow_html=True
     )
