@@ -8,18 +8,22 @@ def render_settings_drawer():
         <style>
         .settings-drawer {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 320px;
-            height: 100vh;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 480px;
+            max-height: 90vh;
             background: rgba(31,31,48,0.95);
             padding: 20px 16px;
             overflow-y: auto;
-            z-index: 1000;
-            transition: transform 0.3s ease-in-out;
+            z-index: 1001;
+            transition: opacity 0.3s ease-in-out;
             backdrop-filter: blur(10px);
-            box-shadow: 2px 0 5px rgba(0,0,0,0.2);
-            transform: translateX(-100%);
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+            border: 2px solid #8000ff;
+            border-radius: 6px;
+            opacity: 0;
             visibility: hidden;
         }
         #close_settings_btn button {
@@ -34,17 +38,17 @@ def render_settings_drawer():
             color: #ff6b6b;
         }
         .drawer-visible {
-            transform: translateX(0);
+            opacity: 1;
             visibility: visible;
         }
         .settings-overlay {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
+            width: 100vw;
             height: 100vh;
             background: rgba(0,0,0,0.5);
-            z-index: 999;
+            z-index: 1000;
             opacity: 0;
             visibility: hidden;
             transition: all 0.3s ease-in-out;
@@ -166,6 +170,7 @@ def render_settings_drawer():
     st.markdown(
         """
         <script>
+        const drawer = document.getElementById('settings-drawer');
         const overlay = document.getElementById('settings-overlay');
 
         if (drawer && overlay) {{
@@ -173,6 +178,12 @@ def render_settings_drawer():
             overlay.addEventListener('click', () => {{
                 const btn = document.querySelector('#close_settings_btn button');
                 if (btn) btn.click();
+            }});
+            document.addEventListener('keydown', (e) => {{
+                if (e.key === 'Escape') {{
+                    const btn = document.querySelector('#close_settings_btn button');
+                    if (btn) btn.click();
+                }}
             }});
         }}
         </script>
