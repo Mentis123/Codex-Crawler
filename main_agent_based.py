@@ -138,6 +138,7 @@ def main():
         # Clear previous results when starting a new fetch
         if fetch_button:
             st.session_state.show_settings = False
+            st.query_params["close_settings"] = "1"
             st.session_state.is_fetching = True
             st.session_state.orchestrator = Orchestrator(
                 st.session_state.get('orchestrator_config', {})
