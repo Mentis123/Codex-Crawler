@@ -6,7 +6,8 @@ def _close_settings_param_check():
     params = st.query_params  # newer API
     if params.get("close_settings") == "1":
         st.session_state.show_settings = False
-        st.experimental_set_query_params(close_settings=None)
+        if "close_settings" in params:
+            del st.query_params["close_settings"]
 
 
 def render_settings_drawer():
