@@ -91,9 +91,9 @@ def render_settings_drawer():
 
     st.markdown(
         f"""
-        <div class="settings-overlay{'visible' if st.session_state.show_settings else ''}" onclick="hideSettingsDrawer();"></div>
+        <div class="settings-overlay{'visible' if st.session_state.show_settings else ''}" onclick="window.hideSettingsDrawer();"></div>
         <div class="settings-drawer{'visible' if st.session_state.show_settings else ''}">
-        <button class="close-btn" onclick="window.hideSettingsDrawer();">✖</button>
+        <button class="close-btn" onclick="window.hideSettingsDrawer()">✖</button>
         """,
         unsafe_allow_html=True
     )
