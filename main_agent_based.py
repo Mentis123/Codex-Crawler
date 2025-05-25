@@ -149,6 +149,7 @@ def main():
             st.session_state.scan_complete = False
             st.session_state.articles = []
             st.session_state.scan_status = []
+            st.rerun()
 
         # Process articles using the agent-based architecture
         if fetch_button or st.session_state.is_fetching:
