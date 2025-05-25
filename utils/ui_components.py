@@ -54,6 +54,16 @@ def render_settings_drawer():
         .settings-content {
             margin-top: 10px;
         }
+        .close-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 20px;
+            cursor: pointer;
+        }
         </style>
         <script>
         window.hideSettingsDrawer = function() {
@@ -78,6 +88,7 @@ def render_settings_drawer():
         f"""
         <div class="settings-overlay{'visible' if st.session_state.show_settings else ''}" onclick="window.hideSettingsDrawer();"></div>
         <div class="settings-drawer{'visible' if st.session_state.show_settings else ''}">
+            <button class="close-btn" onclick="window.hideSettingsDrawer();">&times;</button>
         """,
         unsafe_allow_html=True
     )
@@ -113,6 +124,7 @@ def render_settings_drawer():
                 disabled=st.session_state.get("is_fetching", False),
                 type="primary",
                 key="fetch_btn",
+                on_click=lambda: st.session_state.update(show_settings=False),
             )
 
             config_saved = False
