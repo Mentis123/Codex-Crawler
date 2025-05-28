@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 import pytz
+from utils.common import parse_date
 import trafilatura
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Optional, Set
@@ -148,13 +149,22 @@ class CrawlerAgent(BaseAgent):
             if not metadata:
                 return None
                 
-            # Validate date against cutoff
+            # Validate date against cutoff using flexible parsing
             try:
-                article_date = datetime.strptime(metadata['date'], '%Y-%m-%d').date()
-                cutoff_date = cutoff_time.date()
+                article_date = parse_date(metadata['date'])
+                if not article_date:
+                    raise ValueError(f"Unrecognized date format: {metadata['date']}")
 
-                # Only include articles on or after cutoff date
-                if article_date >= cutoff_date:
+                if article_date.tzinfo:
+                    article_date = article_date.astimezone(pytz.UTC)
+                else:
+                    article_date = pytz.UTC.localize(article_date)
+
+                if not cutoff_time.tzinfo:
+                    cutoff_time = pytz.UTC.localize(cutoff_time)
+
+                # Only include articles on or after cutoff time
+                if article_date >= cutoff_time:
                     self.log_event(f"Found AI article within timeframe: {title}")
                     return {
                         'title': title,

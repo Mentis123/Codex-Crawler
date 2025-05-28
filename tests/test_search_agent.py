@@ -45,7 +45,9 @@ sys.modules.setdefault('bs4', bs4_mod)
 
 sys.modules.setdefault('trafilatura', types.ModuleType('trafilatura'))
 sys.modules.setdefault('pandas', types.ModuleType('pandas'))
-sys.modules.setdefault('pytz', types.ModuleType('pytz'))
+pytz_mod = types.ModuleType('pytz')
+pytz_mod.UTC = types.SimpleNamespace(localize=lambda x: x, astimezone=lambda x: x)
+sys.modules.setdefault('pytz', pytz_mod)
 
 llama_index = types.ModuleType('llama_index')
 core_mod = types.ModuleType('llama_index.core')
