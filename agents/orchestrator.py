@@ -175,7 +175,11 @@ class Orchestrator:
         """Load source websites from configuration or file"""
         if test_mode:
             # Return test sources only
-            return ['https://www.wired.com/tag/artificial-intelligence/']
+            return [
+                'https://www.wired.com/tag/artificial-intelligence/',
+                'https://www.retaildive.com/topic/technology/',
+                'https://techcrunch.com/category/artificial-intelligence/'
+            ]
             
         try:
             if file_path and os.path.exists(file_path):
