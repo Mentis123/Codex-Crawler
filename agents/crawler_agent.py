@@ -163,8 +163,8 @@ class CrawlerAgent(BaseAgent):
                 if not cutoff_time.tzinfo:
                     cutoff_time = pytz.UTC.localize(cutoff_time)
 
-                # Only include articles on or after cutoff time
-                if article_date >= cutoff_time:
+                # Only include articles newer than cutoff time
+                if article_date > cutoff_time:
                     self.log_event(f"Found AI article within timeframe: {title}")
                     return {
                         'title': title,

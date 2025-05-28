@@ -329,8 +329,8 @@ def process_link(link, source_url, ai_regex, cutoff_time, seen_urls):
 
             # Add debugging for date comparison
             logger.info(f"Article date: {article_date}, Cutoff time: {cutoff_time}")
-            # Only add articles that are newer than or equal to cutoff time
-            if article_date >= cutoff_time:
+            # Only add articles that are newer than cutoff time (articles published AFTER the cutoff)
+            if article_date > cutoff_time:
                 logger.info(f"Found AI article within time range: {title}")
                 # Ensure the title is cleaned before adding to articles
                 cleaned_title = clean_article_title(title)

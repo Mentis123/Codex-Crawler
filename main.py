@@ -119,14 +119,14 @@ def process_article(article, source, cutoff_time, db, seen_urls):
     """Process a single article with optimized content extraction and analysis"""
     if article['url'] in seen_urls:
         return None
-        
+
     try:
         # Extract full content with caching
         content = extract_full_content(article['url'])
         if not content:
             logger.warning(f"No content extracted from {article['url']}")
             return None
-            
+
         # Generate article takeaway with caching
         try:
             analysis = summarize_article(content)
@@ -157,13 +157,13 @@ def process_article(article, source, cutoff_time, db, seen_urls):
             db.save_article(article_data)
         except Exception as e:
             logger.error(f"Failed to save article to database: {e}")
-        
+
         return article_data
-        
+
     except Exception as e:
         logger.error(f"Error processing article {article['url']}: {str(e)}")
         return None
-        
+
 def process_batch(sources, cutoff_time, db, seen_urls, status_placeholder):
     """Process a batch of sources with parallel article handling and caching"""
     batch_articles = []
@@ -194,7 +194,7 @@ def process_batch(sources, cutoff_time, db, seen_urls, status_placeholder):
             if ai_articles:
                 update_status(f"Found {len(ai_articles)} AI articles from {source}")
                 total_article_count += len(ai_articles)
-                
+
                 # Process articles in parallel when there are multiple
                 processed_articles = []
                 if len(ai_articles) > 3:
@@ -204,7 +204,7 @@ def process_batch(sources, cutoff_time, db, seen_urls, status_placeholder):
                             executor.submit(process_article, article, source, cutoff_time, db, seen_urls): article 
                             for article in ai_articles if article['url'] not in seen_urls
                         }
-                        
+
                         # Process results as they complete
                         for future in as_completed(future_to_article):
                             article_data = future.result()
@@ -220,10 +220,10 @@ def process_batch(sources, cutoff_time, db, seen_urls, status_placeholder):
                             processed_articles.append(article_data) 
                             seen_urls.add(article_data['url'])
                             update_status(f"Added: {article_data['title']}")
-                
+
                 # Add successful articles to batch
                 batch_articles.extend(processed_articles)
-                
+
             # Mark source as processed
             st.session_state.processed_urls.add(source)
 
@@ -341,8 +341,9 @@ def main():
                         )
                         - timedelta(days=days_to_subtract)
                     )
+                    current_date = datetime.now().strftime('%Y-%m-%d')
                     logger.info(
-                        f"Time period: {st.session_state.time_value} {st.session_state.time_unit}, Cutoff: {cutoff_time} (Including articles newer than this date)"
+                        f"Today is: {current_date}, Time period: {st.session_state.time_value} {st.session_state.time_unit}, Cutoff: {cutoff_time} (Including articles from {(cutoff_time + timedelta(days=1)).strftime('%Y-%m-%d')} to {current_date})"
                     )
 
                     # Process current batch
@@ -444,25 +445,25 @@ def main():
                     st.markdown(f"Published: {article['date']}")
                     # Get and process the takeaway text
                     import re
-                    
+
                     # Helper function to clean and format takeaway text
                     def clean_takeaway(text):
                         # First, join any stray numbers and letters without adding extra spaces
                         text = re.sub(r'(\d+)([a-zA-Z])', r'\1 \2', text)  # Add space between numbers and letters
                         text = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', text)  # Add space between letters and numbers
-                        
+
                         # Fix dollar amounts with spaces 
                         text = re.sub(r'\$ *(\d+)', r'$\1', text)  # Remove space after $ sign
                         text = re.sub(r'\$ *(\d+) *\. *(\d+)', r'$\1.\2', text)  # Fix spaced decimal in dollar amounts
-                        
+
                         # Fix numbers with spaces between digits
                         text = re.sub(r'(\d+) +(\d{3})', r'\1,\2', text)  # Convert "200 000" to "200,000"
                         text = re.sub(r'(\d+) *\, *(\d+)', r'\1,\2', text)  # Fix spaced commas
                         text = re.sub(r'(\d+) *\. *(\d+)', r'\1.\2', text)  # Fix spaced decimals
-                        
+
                         # Fix trailing spaces before punctuation
                         text = re.sub(r' +([.,!?:;])', r'\1', text)  # Remove space before punctuation
-                        
+
                         # Fix long run-on words without adding spaces within numbers
                         words = text.split()
                         processed_words = []
@@ -474,21 +475,21 @@ def main():
                                 processed_words.append(" ".join(chunks))
                             else:
                                 processed_words.append(word)
-                        
+
                         result = " ".join(processed_words)
-                        
+
                         # Final cleanup pass for any remaining issues
                         result = re.sub(r'(\d+) +(\d{3})', r'\1,\2', result)  # Second pass for larger numbers
                         result = re.sub(r' +([.,!?:;])', r'\1', result)  # Final check for spaces before punctuation
-                        
+
                         return result
-                    
+
                     takeaway_text = article.get('takeaway', 'No takeaway available')
                     takeaway_text = clean_takeaway(takeaway_text)
-                    
+
                     # Display the takeaway with custom formatting
                     st.subheader("Takeaway")
-                    
+
                     # Custom CSS to ensure proper text wrapping
                     st.markdown("""
                     <style>
@@ -506,7 +507,7 @@ def main():
                     }
                     </style>
                     """, unsafe_allow_html=True)
-                    
+
                     st.markdown(f'<div class="takeaway-box">{takeaway_text}</div>', unsafe_allow_html=True)
 
                     # Assessment box displayed before criteria details
