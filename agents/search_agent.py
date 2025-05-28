@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 import requests
 from serpapi import Client as SerpAPIClient
 import json
+import pytz
 
 class SearchAgent:
     def __init__(self, config):
@@ -180,7 +181,12 @@ class SearchAgent:
         return articles
 
 
-from utils.content_extractor import extract_metadata as ce_extract_metadata, extract_full_content as ce_extract_full_content, validate_ai_relevance as ce_validate_ai_relevance
+from utils.content_extractor import (
+    extract_metadata as ce_extract_metadata,
+    extract_full_content as ce_extract_full_content,
+    validate_ai_relevance as ce_validate_ai_relevance,
+)
+from utils.common import parse_date
 from utils.ai_analyzer import summarize_article as ai_summarize_article
 
 
@@ -193,20 +199,19 @@ def extract_metadata(url, cutoff_time):
 
         date_val = metadata['date']
         if isinstance(date_val, str):
-            parsed = None
-            for fmt in (
-                "%Y-%m-%d",
-                "%Y-%m-%dT%H:%M:%S",
-                "%Y-%m-%d %H:%M:%S",
-                "%Y-%m-%dT%H:%M:%S%z",
-            ):
-                try:
-                    parsed = datetime.strptime(date_val, fmt)
-                    break
-                except Exception:
-                    continue
-
+            parsed = parse_date(date_val)
             date_val = parsed or datetime.now()
+
+        if not isinstance(date_val, datetime):
+            return None
+
+        if date_val.tzinfo:
+            date_val = date_val.astimezone(pytz.UTC)
+        else:
+            date_val = pytz.UTC.localize(date_val)
+
+        if not cutoff_time.tzinfo:
+            cutoff_time = pytz.UTC.localize(cutoff_time)
 
         if date_val < cutoff_time:
             return None

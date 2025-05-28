@@ -14,6 +14,9 @@ class _OpenAI:
         pass
 openai_mod.OpenAI = _OpenAI
 sys.modules.setdefault('openai', openai_mod)
+yaml_mod = types.ModuleType('yaml')
+yaml_mod.safe_load = lambda *a, **k: {}
+sys.modules.setdefault('yaml', yaml_mod)
 requests_mod = types.ModuleType('requests')
 class _Response:
     status_code = 200
@@ -42,7 +45,9 @@ sys.modules.setdefault('bs4', bs4_mod)
 
 sys.modules.setdefault('trafilatura', types.ModuleType('trafilatura'))
 sys.modules.setdefault('pandas', types.ModuleType('pandas'))
-sys.modules.setdefault('pytz', types.ModuleType('pytz'))
+pytz_mod = types.ModuleType('pytz')
+pytz_mod.UTC = types.SimpleNamespace(localize=lambda x: x, astimezone=lambda x: x)
+sys.modules.setdefault('pytz', pytz_mod)
 
 llama_index = types.ModuleType('llama_index')
 core_mod = types.ModuleType('llama_index.core')
