@@ -4,3 +4,23 @@ articles.db
 # Configuration files
 config.json
 config.default.json
+
+# Uploaded files and attachments
+attached_assets/
+uploads/
+*.tmp
+*.temp
+
+# Image files (if you don't want them committed)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.webp
+
+# Document uploads
+*.pdf
+*.doc
+*.docx
+*.txtuploads/
