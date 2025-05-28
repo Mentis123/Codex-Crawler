@@ -52,7 +52,10 @@ class CrawlerAgent(BaseAgent):
         """Process a list of source URLs to find AI-related articles"""
         if cutoff_time is None:
             days = self.config.get('default_days', 7)
-            cutoff_time = datetime.now() - timedelta(days=days)
+            cutoff_time = (
+                datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                - timedelta(days=days)
+            )
             
         self.log_event(f"Starting crawl of {len(source_urls)} sources with cutoff: {cutoff_time}")
         
@@ -147,15 +150,11 @@ class CrawlerAgent(BaseAgent):
                 
             # Validate date against cutoff
             try:
-                article_date = datetime.strptime(metadata['date'], '%Y-%m-%d')
-                article_date = pytz.UTC.localize(article_date)
+                article_date = datetime.strptime(metadata['date'], '%Y-%m-%d').date()
+                cutoff_date = cutoff_time.date()
 
-                # Ensure cutoff time is timezone aware
-                if not cutoff_time.tzinfo:
-                    cutoff_time = pytz.UTC.localize(cutoff_time)
-
-                # Only include articles after cutoff date
-                if article_date >= cutoff_time:
+                # Only include articles on or after cutoff date
+                if article_date >= cutoff_date:
                     self.log_event(f"Found AI article within timeframe: {title}")
                     return {
                         'title': title,

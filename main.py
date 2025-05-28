@@ -335,7 +335,12 @@ def main():
                         days_to_subtract = st.session_state.time_value
 
                     # Create a cutoff_time in the past
-                    cutoff_time = datetime.now() - timedelta(days=days_to_subtract)
+                    cutoff_time = (
+                        datetime.now().replace(
+                            hour=0, minute=0, second=0, microsecond=0
+                        )
+                        - timedelta(days=days_to_subtract)
+                    )
                     logger.info(
                         f"Time period: {st.session_state.time_value} {st.session_state.time_unit}, Cutoff: {cutoff_time} (Including articles newer than this date)"
                     )

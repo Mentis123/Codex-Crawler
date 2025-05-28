@@ -19,7 +19,11 @@ def validate_timeframe(date_str, cutoff_date):
     Validates if a date is within the specified timeframe
     """
     try:
-        article_date = datetime.strptime(date_str, '%Y-%m-%d')
-        return article_date >= cutoff_date
-    except:
+        article_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        if isinstance(cutoff_date, datetime):
+            cutoff = cutoff_date.date()
+        else:
+            cutoff = cutoff_date
+        return article_date >= cutoff
+    except Exception:
         return False
