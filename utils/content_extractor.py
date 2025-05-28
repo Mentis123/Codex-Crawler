@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 import logging
 import time
 from datetime import datetime, timedelta
+from utils.common import parse_date
 import pytz
 from urllib.parse import urljoin
 import re
@@ -310,11 +311,17 @@ def process_link(link, source_url, ai_regex, cutoff_time, seen_urls):
         if not metadata:
             return None
 
-        # Parse the article date
+        # Parse the article date using flexible formats
         try:
-            article_date = datetime.strptime(metadata['date'], '%Y-%m-%d')
+            article_date = parse_date(metadata['date'])
+            if not article_date:
+                raise ValueError(f"Unrecognized date format: {metadata['date']}")
+
             # Add UTC timezone to match cutoff_time
-            article_date = pytz.UTC.localize(article_date)
+            if article_date.tzinfo:
+                article_date = article_date.astimezone(pytz.UTC)
+            else:
+                article_date = pytz.UTC.localize(article_date)
 
             # Ensure cutoff_time is timezone aware
             if not cutoff_time.tzinfo:

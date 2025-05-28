@@ -14,6 +14,9 @@ class _OpenAI:
         pass
 openai_mod.OpenAI = _OpenAI
 sys.modules.setdefault('openai', openai_mod)
+yaml_mod = types.ModuleType('yaml')
+yaml_mod.safe_load = lambda *a, **k: {}
+sys.modules.setdefault('yaml', yaml_mod)
 requests_mod = types.ModuleType('requests')
 class _Response:
     status_code = 200
