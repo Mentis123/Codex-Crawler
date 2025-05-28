@@ -1,14 +1,15 @@
 
 import os
-from openai import OpenAI
 import json
-from typing import Dict, Any, Optional, List
-import re
 import logging
 import functools
 import hashlib
+import re
 import time
-from utils.config_manager import load_config, DEFAULT_CONFIG
+from typing import Any, Dict, List, Optional
+
+from openai import OpenAI
+from utils import config_manager
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -26,10 +27,28 @@ def _get_client():
 # Simple in-memory cache for API responses
 _cache = {}
 
+# Cached rubric and file modification timestamp
+_cached_rubric: Optional[str] = None
+_cached_rubric_mtime: float = 0.0
+
 def _get_takeaway_rubric() -> str:
-    """Retrieve the current takeaway rubric from configuration."""
-    cfg = load_config()
-    return cfg.get("takeaway_rubric", DEFAULT_CONFIG["takeaway_rubric"])
+    """Retrieve the current takeaway rubric using a cached config value."""
+    global _cached_rubric, _cached_rubric_mtime
+
+    try:
+        mtime = os.path.getmtime(config_manager.CONFIG_PATH)
+    except OSError:
+        mtime = 0.0
+
+    if _cached_rubric is None or mtime != _cached_rubric_mtime:
+        cfg = config_manager.load_config()
+        _cached_rubric = cfg.get(
+            "takeaway_rubric",
+            config_manager.DEFAULT_CONFIG["takeaway_rubric"],
+        )
+        _cached_rubric_mtime = mtime
+
+    return _cached_rubric
 
 def cache_result(func):
     """Cache decorator for expensive API calls"""
