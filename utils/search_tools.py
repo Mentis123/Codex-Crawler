@@ -24,8 +24,9 @@ def search_web(keywords, cutoff_date):
             results = client.search(params).get("news_results", [])
 
             for result in results:
-                pub_date = datetime.strptime(result['date'], '%Y-%m-%d')
-                if pub_date >= cutoff_date:
+                pub_date = datetime.strptime(result['date'], '%Y-%m-%d').date()
+                c_date = cutoff_date.date() if isinstance(cutoff_date, datetime) else cutoff_date
+                if pub_date >= c_date:
                     articles.append({
                         'title': result['title'],
                         'url': result['link'],
@@ -64,16 +65,17 @@ def search_arxiv(cutoff_date):
             summary = entry.findtext("a:summary", default="", namespaces=ns).strip()
 
             try:
-                pub_date = datetime.strptime(date_text[:10], "%Y-%m-%d")
+                pub_date = datetime.strptime(date_text[:10], "%Y-%m-%d").date()
             except Exception:
-                pub_date = cutoff_date
+                pub_date = cutoff_date.date() if isinstance(cutoff_date, datetime) else cutoff_date
 
-            if pub_date >= cutoff_date:
+            c_date = cutoff_date.date() if isinstance(cutoff_date, datetime) else cutoff_date
+            if pub_date >= c_date:
                 articles.append({
                     "title": title,
                     "url": link,
                     "source": "arXiv",
-                    "published_date": pub_date,
+                    "published_date": datetime.combine(pub_date, datetime.min.time()),
                     "content": summary,
                 })
     except Exception as e:

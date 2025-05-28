@@ -66,8 +66,13 @@ class Orchestrator:
         try:
             # Calculate cutoff time
             days_to_subtract = time_period * 7 if time_unit == "Weeks" else time_period
-            cutoff_time = datetime.now() - timedelta(days=days_to_subtract)
-            self.update_status(f"Time period: {time_period} {time_unit}, Cutoff: {cutoff_time}")
+            cutoff_time = (
+                datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                - timedelta(days=days_to_subtract)
+            )
+            self.update_status(
+                f"Time period: {time_period} {time_unit}, Cutoff: {cutoff_time}"
+            )
             
             # Step 1: Crawl sources for articles
             self.update_status("Crawling sources for AI articles...")
