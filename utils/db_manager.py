@@ -2,14 +2,23 @@
 import sqlite3
 from datetime import datetime
 import json
+import threading
 
 class DBManager:
     def __init__(self):
-        self.conn = sqlite3.connect('articles.db')
+        self.db_path = 'articles.db'
+        self.local = threading.local()
         self.create_tables()
         
+    def get_connection(self):
+        """Get a thread-local database connection"""
+        if not hasattr(self.local, 'conn'):
+            self.local.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        return self.local.conn
+        
     def create_tables(self):
-        cursor = self.conn.cursor()
+        conn = self.get_connection()
+        cursor = conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS articles (
                 url TEXT PRIMARY KEY,
@@ -21,10 +30,11 @@ class DBManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        self.conn.commit()
+        conn.commit()
         
     def save_article(self, article):
-        cursor = self.conn.cursor()
+        conn = self.get_connection()
+        cursor = conn.cursor()
         cursor.execute('''
             INSERT OR REPLACE INTO articles (url, title, date, content, summary, ai_validation)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -36,10 +46,11 @@ class DBManager:
             article.get('summary', ''),
             article.get('ai_validation', '')
         ))
-        self.conn.commit()
+        conn.commit()
         
     def get_articles(self, limit=None):
-        cursor = self.conn.cursor()
+        conn = self.get_connection()
+        cursor = conn.cursor()
         query = 'SELECT * FROM articles ORDER BY created_at DESC'
         if limit:
             query += f' LIMIT {limit}'
