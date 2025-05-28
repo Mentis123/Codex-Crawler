@@ -1,0 +1,106 @@
+
+  You can now view your Streamlit app in your browser.
+
+  URL: http://0.0.0.0:5000
+
+INFO:agents.base_agent:EvaluationAgent initialized OpenAI client
+INFO:__main__:Initializing session state
+INFO:__main__:Session state initialized successfully
+INFO:agents.base_agent:EvaluationAgent initialized OpenAI client
+INFO:agents.base_agent:EvaluationAgent initialized OpenAI client
+INFO:agents.base_agent:EvaluationAgent initialized OpenAI client
+INFO:utils.content_extractor:Running in test mode - using Wired.com only
+INFO:__main__:Time period: 1 Weeks, Cutoff: 2025-05-21 00:00:00 (Including articles newer than this date)
+INFO:utils.content_extractor:Searching with cutoff time: 2025-05-21 00:00:00
+INFO:utils.content_extractor:Processing source: https://www.wired.com/tag/artificial-intelligence/
+INFO:utils.content_extractor:Scanning URL: https://www.wired.com/tag/artificial-intelligence/
+INFO:utils.content_extractor:Found potential AI article: Inside Anthropic’s First Developer Day, Where AI Agents Took Center Stage
+INFO:utils.content_extractor:Found potential AI article: Let's Talk About ChatGPT and Cheating in the Classroom
+INFO:utils.content_extractor:Found potential AI article: AI Is Eating Data Center Power Demand—and It’s Only Getting Worse
+INFO:utils.content_extractor:Found potential AI article: A United Arab Emirates Lab Announces Frontier AI Projects—and a New Outpost in Silicon Valley
+INFO:utils.content_extractor:Found potential AI article: DOGE Used a Meta AI Model to Review Emails From Federal Workers
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+INFO:utils.content_extractor:Article date: 2025-05-23 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Found AI article within time range: Inside Anthropic’s First Developer Day, Where AI Agents Took Center Stage
+INFO:utils.content_extractor:Found potential AI article: Politico’s Newsroom Is Starting a Legal Battle With Management Over AI
+INFO:utils.content_extractor:Article date: 2025-05-22 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Found AI article within time range: A United Arab Emirates Lab Announces Frontier AI Projects—and a New Outpost in Silicon Valley
+INFO:utils.content_extractor:Found potential AI article: Who’s to Blame When AI Agents Screw Up?
+INFO:utils.content_extractor:Article date: 2025-05-22 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Found AI article within time range: DOGE Used a Meta AI Model to Review Emails From Federal Workers
+INFO:utils.content_extractor:Found potential AI article: OpenAI's Big Bet That Jony Ive Can Make AI Hardware Work
+INFO:utils.content_extractor:Article date: 2025-05-22 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Found AI article within time range: AI Is Eating Data Center Power Demand—and It’s Only Getting Worse
+INFO:utils.content_extractor:Found potential AI article: A Gaming YouTuber Says an AI-Generated Clone of His Voice Is Being Used to Narrate Doom Videos
+INFO:utils.content_extractor:Article date: 2025-05-22 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Found AI article within time range: Politico’s Newsroom Is Starting a Legal Battle With Management Over AI
+INFO:utils.content_extractor:Found potential AI article: Jack Dorsey's Block Made an AI Agent to Boost Its Own Productivity
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+INFO:utils.content_extractor:Article date: 2025-05-21 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Found AI article within time range: A Gaming YouTuber Says an AI-Generated Clone of His Voice Is Being Used to Narrate Doom Videos
+INFO:utils.content_extractor:Found potential AI article: With AI Mode, Google Search Is About to Get Even Chattier
+INFO:utils.content_extractor:Article date: 2025-05-23 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Found AI article within time range: Let's Talk About ChatGPT and Cheating in the Classroom
+INFO:utils.content_extractor:Found potential AI article: Google’s AI Boss Says Gemini's New Abilities Point the Way to AGI
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+INFO:utils.content_extractor:Article date: 2025-05-22 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Found AI article within time range: Who’s to Blame When AI Agents Screw Up?
+INFO:utils.content_extractor:Found potential AI article: How Peter Thiel’s Relationship With Eliezer Yudkowsky Launched the AI Revolution
+INFO:utils.content_extractor:Article date: 2025-05-21 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Found AI article within time range: OpenAI's Big Bet That Jony Ive Can Make AI Hardware Work
+INFO:utils.content_extractor:Found potential AI article: ‘A Billion Streams and No Fans’: Inside a $10 Million AI Music Fraud Case
+INFO:utils.content_extractor:Article date: 2025-05-21 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Found AI article within time range: Jack Dorsey's Block Made an AI Agent to Boost Its Own Productivity
+INFO:utils.content_extractor:Found potential AI article: Is He Really Mad at Me? Maybe ChatGPT Knows
+INFO:utils.content_extractor:Article date: 2025-05-20 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Skipping article older than cutoff: With AI Mode, Google Search Is About to Get Even Chattier (2025-05-20) - Expected newer than 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Found potential AI article: Fortnite Players Are Already Making AI Darth Vader Swear
+INFO:utils.content_extractor:Article date: 2025-05-20 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Skipping article older than cutoff: Google’s AI Boss Says Gemini's New Abilities Point the Way to AGI (2025-05-20) - Expected newer than 2025-05-21 00:00:00+00:00
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+INFO:utils.content_extractor:Article date: 2025-05-20 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Skipping article older than cutoff: How Peter Thiel’s Relationship With Eliezer Yudkowsky Launched the AI Revolution (2025-05-20) - Expected newer than 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Article date: 2025-05-19 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Skipping article older than cutoff: Is He Really Mad at Me? Maybe ChatGPT Knows (2025-05-19) - Expected newer than 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Article date: 2025-05-20 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Skipping article older than cutoff: ‘A Billion Streams and No Fans’: Inside a $10 Million AI Music Fraud Case (2025-05-20) - Expected newer than 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Article date: 2025-05-16 00:00:00+00:00, Cutoff time: 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Skipping article older than cutoff: Fortnite Players Are Already Making AI Darth Vader Swear (2025-05-16) - Expected newer than 2025-05-21 00:00:00+00:00
+INFO:utils.content_extractor:Found 10 articles from https://www.wired.com/tag/artificial-intelligence/
+INFO:utils.content_extractor:Successfully processed https://www.wired.com/tag/artificial-intelligence/: found 10 articles
+INFO:utils.ai_analyzer:Processing chunk 1/1 (~2111 tokens)
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+WARNING:urllib3.connectionpool:Connection pool is full, discarding connection: www.wired.com. Connection pool size: 1
+INFO:utils.ai_analyzer:Processing chunk 1/1 (~2052 tokens)
+INFO:utils.ai_analyzer:Processing chunk 1/1 (~1167 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+ERROR:__main__:Failed to save article to database: SQLite objects created in a thread can only be used in that same thread. The object was created in thread id 139723655857856 and this is thread id 139723121088192.
+INFO:utils.ai_analyzer:Processing chunk 1/1 (~2331 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+ERROR:__main__:Failed to save article to database: SQLite objects created in a thread can only be used in that same thread. The object was created in thread id 139723655857856 and this is thread id 139723129480896.
+INFO:utils.ai_analyzer:Processing chunk 1/1 (~2470 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+ERROR:__main__:Failed to save article to database: SQLite objects created in a thread can only be used in that same thread. The object was created in thread id 139723655857856 and this is thread id 139723627407040.
+INFO:utils.ai_analyzer:Processing chunk 1/1 (~1669 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+ERROR:__main__:Failed to save article to database: SQLite objects created in a thread can only be used in that same thread. The object was created in thread id 139723655857856 and this is thread id 139723129480896.
+INFO:utils.ai_analyzer:Processing chunk 1/1 (~17602 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+ERROR:__main__:Failed to save article to database: SQLite objects created in a thread can only be used in that same thread. The object was created in thread id 139723655857856 and this is thread id 139723121088192.
+INFO:utils.ai_analyzer:Processing chunk 1/1 (~3490 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+ERROR:__main__:Failed to save article to database: SQLite objects created in a thread can only be used in that same thread. The object was created in thread id 139723655857856 and this is thread id 139723627407040.
+INFO:utils.ai_analyzer:Processing chunk 1/1 (~1269 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+ERROR:__main__:Failed to save article to database: SQLite objects created in a thread can only be used in that same thread. The object was created in thread id 139723655857856 and this is thread id 139723129480896.
+INFO:utils.ai_analyzer:Processing chunk 1/1 (~1640 tokens)
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+ERROR:__main__:Failed to save article to database: SQLite objects created in a thread can only be used in that same thread. The object was created in thread id 139723655857856 and this is thread id 139723121088192.
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+ERROR:__main__:Failed to save article to database: SQLite objects created in a thread can only be used in that same thread. The object was created in thread id 139723655857856 and this is thread id 139723627407040.
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+ERROR:__main__:Failed to save article to database: SQLite objects created in a thread can only be used in that same thread. The object was created in thread id 139723655857856 and this is thread id 139723129480896.
+INFO:__main__:Processed 1 sources, found 10 articles, added 10 articles
