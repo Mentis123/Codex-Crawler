@@ -29,6 +29,9 @@ An AI-powered news aggregation system that intelligently collects and analyzes A
    - `SERPAPI_API_KEY`: Your SerpAPI key
 4. Run the application: `streamlit run main.py`
 
+The first run automatically generates a `config.default.json` file with the
+baseline settings if it is missing. This file is ignored by Git.
+
 If you need to restore the default configuration, run `python scripts/reset_config.py` from the repository root.
 
 ## Project Structure
