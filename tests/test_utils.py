@@ -13,7 +13,9 @@ sys.modules.setdefault("requests", types.SimpleNamespace(get=lambda *a, **k: Non
 
 from datetime import datetime
 import json
+import os
 import sqlite3
+import time
 
 import pytest
 
@@ -101,3 +103,26 @@ def test_db_manager_in_memory(monkeypatch):
     rows = db.get_articles()
     assert len(rows) == 1
     assert rows[0]["url"] == "http://example.com"
+
+
+def test_get_takeaway_rubric_reload(tmp_path, monkeypatch):
+    cfg_file = tmp_path / "config.json"
+    default_file = tmp_path / "config.default.json"
+    monkeypatch.setattr(config_manager, "CONFIG_PATH", str(cfg_file))
+    monkeypatch.setattr(config_manager, "DEFAULT_CONFIG_PATH", str(default_file))
+
+    content = {"takeaway_rubric": "orig"}
+    cfg_file.write_text(json.dumps(content))
+    default_file.write_text(json.dumps(content))
+
+    monkeypatch.setattr(ai_analyzer, "_cached_rubric", None, raising=False)
+    monkeypatch.setattr(ai_analyzer, "_cached_rubric_mtime", 0.0, raising=False)
+
+    first = ai_analyzer._get_takeaway_rubric()
+    assert first == "orig"
+
+    time.sleep(1)
+    cfg_file.write_text(json.dumps({"takeaway_rubric": "updated"}))
+    os.utime(cfg_file, None)
+    updated = ai_analyzer._get_takeaway_rubric()
+    assert updated == "updated"
