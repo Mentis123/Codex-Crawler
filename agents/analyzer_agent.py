@@ -5,6 +5,8 @@ import logging
 import json
 from typing import Dict, Any, List, Optional, Tuple
 
+from utils.config_manager import load_config, DEFAULT_CONFIG
+
 from agents.base_agent import BaseAgent
 
 # Configure logging
@@ -23,6 +25,11 @@ class AnalyzerAgent(BaseAgent):
         self.cache_duration = config.get('cache_duration_hours', 12) if config else 12
         self.model = config.get('model', 'gpt-4o') if config else 'gpt-4o'
         self.log_event("Analyzer agent initialized")
+
+    def _get_takeaway_rubric(self) -> str:
+        """Retrieve the current takeaway rubric from configuration."""
+        cfg = load_config()
+        return cfg.get("takeaway_rubric", DEFAULT_CONFIG["takeaway_rubric"])
     
     def process(self, articles: List[Dict]) -> List[Dict]:
         """Process a list of articles for analysis"""
@@ -174,12 +181,7 @@ class AnalyzerAgent(BaseAgent):
             
         prompt = (
             "Analyze this article about AI and create a business-focused takeaway following these rules:\n\n"
-            "1. Write a 3-4 sentence focused takeaway (70-90 words)\n"
-            "2. Include specific company names mentioned in the article\n"
-            "3. Include quantitative data when available (revenue, user counts, percentages)\n"
-            "4. Only use statistics from the source text - never fabricate numbers\n"
-            "5. Highlight business impacts and strategic benefits of the AI technology\n"
-            "6. Use clear language without technical jargon\n\n"
+            f"{self._get_takeaway_rubric()}\n\n"
             "Also extract 3-5 key points from the article.\n\n"
             "Response format: {\"takeaway\": \"...\", \"key_points\": [\"point 1\", \"point 2\", ...]}\n\n"
             f"Article content:\n{chunk[:12000]}"  # Limit chunk size
@@ -231,11 +233,7 @@ class AnalyzerAgent(BaseAgent):
             "Combine these separate takeaways into a single business-focused summary:\n\n"
             f"{combined_takeaways}\n\n"
             "Follow these rules for your combined takeaway:\n"
-            "1. Write 3-4 impactful sentences in a single paragraph (70-90 words total)\n"
-            "2. Include specific company names from the original takeaways\n"
-            "3. Include the most important quantitative data\n"
-            "4. Focus on business impact and strategic implications\n"
-            "5. Use clear, executive-friendly language\n\n"
+            f"{self._get_takeaway_rubric()}\n\n"
             "Also synthesize these key points into the 4-5 most important ones:\n"
             f"{all_key_points}\n\n"
             "Response format: {\"takeaway\": \"...\", \"key_points\": [\"point 1\", \"point 2\", ...]}"
