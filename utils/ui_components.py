@@ -99,7 +99,7 @@ def render_settings_drawer():
             st.session_state.test_mode = st.toggle(
                 "Test Mode",
                 value=st.session_state.get('test_mode', False),
-                help="In Test Mode, only Wired.com is scanned",
+                help="In Test Mode, only TechCrunch is scanned",
             )
 
             col1, col2 = st.columns([2, 2])
