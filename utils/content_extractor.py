@@ -68,10 +68,8 @@ def load_source_sites(test_mode: bool = False) -> List[str]:
         sites = list(dict.fromkeys(sites))
 
         if test_mode:
-            logger.info("Running in test mode - using 3 sources: Wired, TechCrunch AI, and Retail Dive")
+            logger.info("Running in test mode - using 1 source: TechCrunch AI")
             return [
-                'https://www.wired.com/tag/artificial-intelligence/',
-                'https://www.retaildive.com/topic/technology/',
                 'https://techcrunch.com/category/artificial-intelligence/'
             ]
 
