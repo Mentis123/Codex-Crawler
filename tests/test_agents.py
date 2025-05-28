@@ -49,3 +49,36 @@ def test_validate_ai_relevance_title():
     result = agent.validate_ai_relevance(data)
     assert result['is_relevant']
     assert 'AI term' in result['reason']
+
+
+def test_analyzer_uses_config_rubric(monkeypatch):
+    rubric_holder = {"val": "RUBRIC_ONE"}
+
+    def fake_load_config():
+        return {"takeaway_rubric": rubric_holder["val"]}
+
+    from utils import config_manager
+    from agents import analyzer_agent
+
+    monkeypatch.setattr(config_manager, "load_config", fake_load_config)
+    monkeypatch.setattr(analyzer_agent, "load_config", fake_load_config)
+
+    agent = AnalyzerAgent(config={})
+    captured = {}
+
+    def fake_execute(prompt, **kwargs):
+        captured["prompt"] = prompt
+        return {"takeaway": "t", "key_points": []}
+
+    monkeypatch.setattr(agent, "execute_ai_prompt", fake_execute)
+
+    agent._process_chunk("word " * 30)
+    assert "RUBRIC_ONE" in captured["prompt"]
+
+    rubric_holder["val"] = "RUBRIC_TWO"
+    captured.clear()
+    agent._combine_summaries([
+        {"takeaway": "a", "key_points": []},
+        {"takeaway": "b", "key_points": []},
+    ])
+    assert "RUBRIC_TWO" in captured["prompt"]
