@@ -76,6 +76,12 @@ def test_is_specific_article():
     meta = {"title": "About", "url": "https://example.com/about"}
     assert not content_extractor.is_specific_article(meta)
 
+    meta = {"title": "AI", "url": "https://example.com/category/artificial-intelligence/"}
+    assert not content_extractor.is_specific_article(meta)
+
+    meta = {"title": "AI", "url": "https://example.com/tag/ai/"}
+    assert not content_extractor.is_specific_article(meta)
+
 
 def test_split_into_chunks():
     text = "word " * 10000
@@ -87,6 +93,7 @@ def test_split_into_chunks():
 def test_db_manager_in_memory(monkeypatch):
     def dummy_init(self):
         self.conn = sqlite3.connect(":memory:")
+        self.local = types.SimpleNamespace(conn=self.conn)
         self.create_tables()
 
     monkeypatch.setattr(db_manager.DBManager, "__init__", dummy_init, raising=False)

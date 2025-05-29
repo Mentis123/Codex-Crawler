@@ -269,7 +269,16 @@ def is_specific_article(metadata: Dict[str, str]) -> bool:
         r'/contact\b'
     ]
 
-    if any(re.search(pattern, url) for pattern in url_patterns_to_exclude):
+    # Exclude common directory pages like category or tag listings
+    directory_patterns = [
+        r'/(category|categories)/[^/]+/?$',
+        r'/tag(s)?/[^/]+/?$',
+        r'/topic(s)?/[^/]+/?$'
+    ]
+
+    all_patterns = url_patterns_to_exclude + directory_patterns
+
+    if any(re.search(pattern, url) for pattern in all_patterns):
         logger.info(f"Excluding non-article URL: {url}")
         return False
 
@@ -311,6 +320,10 @@ def process_link(link, source_url, ai_regex, cutoff_time, seen_urls):
         metadata = extract_metadata(href, cutoff_time)
 
         if not metadata:
+            return None
+
+        # Filter out directory pages like category or tag listings
+        if not is_specific_article({'title': metadata.get('title', title), 'url': href}):
             return None
 
         # Parse the article date using flexible formats
