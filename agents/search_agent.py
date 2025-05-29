@@ -166,7 +166,7 @@ class SearchAgent:
                         continue
 
                     metadata = extract_metadata(result['link'], cutoff_time)
-                    if metadata:
+                    if metadata and ce_is_specific_article({'title': result['title'], 'url': result['link']}):
                         articles.append({
                             'title': result['title'],
                             'url': result['link'],
@@ -185,6 +185,7 @@ from utils.content_extractor import (
     extract_metadata as ce_extract_metadata,
     extract_full_content as ce_extract_full_content,
     validate_ai_relevance as ce_validate_ai_relevance,
+    is_specific_article as ce_is_specific_article,
 )
 from utils.common import parse_date
 from utils.ai_analyzer import summarize_article as ai_summarize_article
