@@ -50,6 +50,89 @@ def _get_takeaway_rubric() -> str:
 
     return _cached_rubric
 
+def _validate_takeaway(takeaway: str) -> Dict[str, Any]:
+    """Validate takeaway against rubric and provide refinement instructions."""
+    try:
+        validation_prompt = f"""
+        Evaluate this takeaway against the rubric and provide specific refinement instructions:
+
+        RUBRIC:
+        {_get_takeaway_rubric()}
+
+        TAKEAWAY TO EVALUATE:
+        "{takeaway}"
+
+        Respond with JSON in this format:
+        {{
+            "passes_validation": true/false,
+            "word_count": actual_word_count,
+            "issues_found": ["issue1", "issue2"],
+            "refinement_instructions": "Specific instructions for fixing the takeaway"
+        }}
+        """
+
+        response = _get_client().chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are a validation system that checks takeaways against rubrics and provides refinement instructions."},
+                {"role": "user", "content": validation_prompt}
+            ],
+            max_completion_tokens=1000,
+            response_format={"type": "json_object"},
+            timeout=20
+        )
+
+        if response and response.choices and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
+        
+        return {"passes_validation": True, "issues_found": [], "refinement_instructions": ""}
+
+    except Exception as e:
+        logger.error(f"Error validating takeaway: {str(e)}")
+        return {"passes_validation": True, "issues_found": [], "refinement_instructions": ""}
+
+def _refine_takeaway(original_takeaway: str, refinement_instructions: str, original_content: str) -> str:
+    """Refine takeaway based on validation feedback."""
+    try:
+        refinement_prompt = f"""
+        Improve this takeaway based on the specific refinement instructions:
+
+        ORIGINAL TAKEAWAY:
+        "{original_takeaway}"
+
+        REFINEMENT INSTRUCTIONS:
+        {refinement_instructions}
+
+        RUBRIC TO FOLLOW:
+        {_get_takeaway_rubric()}
+
+        ORIGINAL CONTENT (for reference):
+        {original_content[:5000]}...
+
+        Respond with JSON: {{"takeaway": "improved takeaway here"}}
+        """
+
+        response = _get_client().chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an expert at refining business takeaways according to specific instructions and rubrics."},
+                {"role": "user", "content": refinement_prompt}
+            ],
+            max_completion_tokens=1500,
+            response_format={"type": "json_object"},
+            timeout=25
+        )
+
+        if response and response.choices and response.choices[0].message.content:
+            result = json.loads(response.choices[0].message.content)
+            return result.get("takeaway", original_takeaway)
+        
+        return original_takeaway
+
+    except Exception as e:
+        logger.error(f"Error refining takeaway: {str(e)}")
+        return original_takeaway
+
 def cache_result(func):
     """Cache decorator for expensive API calls"""
     @functools.wraps(func)
@@ -163,7 +246,25 @@ def _process_chunk(chunk: str) -> Optional[Dict[str, Any]]:
         if content:
             content = content.strip()
             try:
-                return json.loads(content)
+                result = json.loads(content)
+                takeaway = result.get("takeaway", "")
+                
+                # Validate the takeaway and refine if needed
+                if takeaway:
+                    validation = _validate_takeaway(takeaway)
+                    
+                    # If validation fails, attempt refinement
+                    if not validation.get("passes_validation", True):
+                        refinement_instructions = validation.get("refinement_instructions", "")
+                        if refinement_instructions:
+                            logger.info(f"Takeaway validation failed, attempting refinement: {validation.get('issues_found', [])}")
+                            refined_takeaway = _refine_takeaway(takeaway, refinement_instructions, chunk)
+                            result["takeaway"] = refined_takeaway
+                            
+                            # Log the refinement
+                            logger.info(f"Takeaway refined from {validation.get('word_count', 0)} words")
+                
+                return result
             except json.JSONDecodeError as json_err:
                 logger.warning(f"JSON decode error: {json_err} - Content: {content[:100]}...")
                 
@@ -247,7 +348,25 @@ def _combine_summaries(summaries: List[Dict[str, Any]]) -> Dict[str, Any]:
         if content:
             content = content.strip()
             try:
-                return json.loads(content)
+                result = json.loads(content)
+                takeaway = result.get("takeaway", "")
+                
+                # Validate the combined takeaway and refine if needed
+                if takeaway:
+                    validation = _validate_takeaway(takeaway)
+                    
+                    # If validation fails, attempt refinement
+                    if not validation.get("passes_validation", True):
+                        refinement_instructions = validation.get("refinement_instructions", "")
+                        if refinement_instructions:
+                            logger.info(f"Combined takeaway validation failed, attempting refinement: {validation.get('issues_found', [])}")
+                            refined_takeaway = _refine_takeaway(takeaway, refinement_instructions, combined_text)
+                            result["takeaway"] = refined_takeaway
+                            
+                            # Log the refinement
+                            logger.info(f"Combined takeaway refined from {validation.get('word_count', 0)} words")
+                
+                return result
             except json.JSONDecodeError as json_err:
                 logger.warning(f"JSON decode error in combine: {json_err} - Content: {content[:100]}...")
                 
