@@ -1,0 +1,2921 @@
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="AI News Aggregator - Crocs Monitoring Service">
+  
+  <!-- ESSENTIAL CORE FILES -->
+  <category name="Essential Core">
+    
+    <file path="main.py">
+      <content><![CDATA[
+import streamlit as st
+from datetime import datetime, timedelta
+from utils.content_extractor import load_source_sites, find_ai_articles, extract_full_content
+from utils.ai_analyzer import summarize_article
+from utils.report_tools import (
+    generate_pdf_report,
+    generate_csv_report,
+    generate_excel_report,
+    sort_by_assessment_and_score,
+)
+from utils.simple_particles import add_simple_particles
+from agents.evaluation_agent import EvaluationAgent
+import pandas as pd
+import json
+import os
+from io import BytesIO
+import traceback
+from openai import OpenAI
+from urllib.parse import quote
+import logging
+import gc
+import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Initialize evaluation agent
+evaluation_agent = EvaluationAgent()
+
+# Initialize session state before anything else
+if 'initialized' not in st.session_state:
+    try:
+        logger.info("Initializing session state")
+        st.session_state.articles = []
+        st.session_state.selected_articles = []
+        st.session_state.scan_status = []
+        st.session_state.test_mode = False
+        st.session_state.processing_time = None
+        st.session_state.processed_urls = set()  # Track processed URLs
+        st.session_state.current_batch_index = 0  # Track current batch
+        st.session_state.batch_size = 5  # Configurable batch size
+        st.session_state.is_fetching = False
+        st.session_state.pdf_data = None  # Initialize PDF data
+        st.session_state.csv_data = None  # Initialize CSV data
+        st.session_state.excel_data = None  # Initialize Excel data
+        st.session_state.show_settings = True  # Show settings panel on first load
+        st.session_state.time_value = 1  # Default time period value
+        st.session_state.time_unit = "Weeks"  # Default time period unit
+        st.session_state.initialized = True
+        st.session_state.last_update = datetime.now()
+        st.session_state.scan_complete = False  # Flag to track if a scan has completed
+        st.session_state.current_articles = []  # Store articles for persistent access
+        logger.info("Session state initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing session state: {str(e)}")
+        st.error("Error initializing application. Please refresh the page.")
+
+# Set page config after initialization
+st.set_page_config(
+    page_title="AI News Aggregator",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# We're using the utils/report_tools.py version instead
+from utils.report_tools import generate_pdf_report
+
+# We're using the utils/report_tools.py versions instead
+from utils.report_tools import generate_csv_report, generate_excel_report
+
+def update_status(message):
+    """Updates the processing status in the Streamlit UI."""
+    current_time = datetime.now().strftime("%H:%M:%S")
+    status_msg = f"[{current_time}] {message}"
+    st.session_state.scan_status.insert(0, status_msg)
+
+def render_criteria_dashboard(criteria):
+    """Render a styled criteria dashboard below each article."""
+    if not criteria:
+        return
+
+    st.markdown(
+        """
+        <style>
+        .criteria-table {width:100%; border-collapse:collapse; margin-bottom:5px;}
+        .criteria-table th, .criteria-table td {border:1px solid #555; padding:4px 6px; font-size:12px;}
+        .criteria-table th {background-color:#31333F; color:#fff;}
+        .status-true {color:#21ba45; font-weight:bold; text-align:center;}
+        .status-false {color:#db2828; font-weight:bold; text-align:center;}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    rows = "".join(
+        f"<tr><td>{c.get('criteria')}</td><td class='{'status-true' if c.get('status') else 'status-false'}'>{'✅' if c.get('status') else '❌'}</td><td>{c.get('notes')}</td></tr>"
+        for c in criteria
+    )
+    html = f"<table class='criteria-table'><thead><tr><th>Criteria</th><th>Status</th><th>Notes</th></tr></thead><tbody>{rows}</tbody></table>"
+    st.markdown(html, unsafe_allow_html=True)
+
+def render_assessment_box(assessment: str, score: int):
+    """Display assessment and score in a colored box."""
+    color_map = {"INCLUDE": "#21ba45", "OK": "#f2c037", "CUT": "#db2828"}
+    color = color_map.get(assessment, "#cccccc")
+    st.markdown(
+        f"<div style='border:1px solid {color}; padding:6px 10px; border-radius:4px; display:inline-block; margin-bottom:10px;'>"
+        f"<b>Assessment:</b> <span style='color:{color}'>{assessment}</span> &nbsp; "
+        f"<b>Score:</b> {score}%"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+
+def process_article(article, source, cutoff_time, db, seen_urls):
+    """Process a single article with optimized content extraction and analysis"""
+    if article['url'] in seen_urls:
+        return None
+
+    try:
+        # Extract full content with caching
+        content = extract_full_content(article['url'])
+        if not content:
+            logger.warning(f"No content extracted from {article['url']}")
+            return None
+
+        # Generate article takeaway with caching
+        try:
+            analysis = summarize_article(content)
+        except Exception as e:
+            logger.warning(f"Takeaway generation failed for {article['title']}: {e}")
+            analysis = {'takeaway': 'No takeaway available', 'key_points': []}
+
+        # Create article data
+        article_data = {
+            'title': article['title'],
+            'url': article['url'],
+            'date': article['date'],
+            'takeaway': analysis.get('takeaway', 'No takeaway available'),
+            'source': source,
+            'ai_validation': "AI-related article found in scan"
+        }
+
+        # Evaluate against selection criteria
+        eval_result = evaluation_agent.evaluate_article({
+            'title': article['title'],
+            'content': content,
+            'takeaway': article_data['takeaway']
+        })
+        article_data.update(eval_result)
+
+        # Save to database if possible
+        try:
+            db.save_article(article_data)
+        except Exception as e:
+            logger.error(f"Failed to save article to database: {e}")
+
+        return article_data
+
+    except Exception as e:
+        logger.error(f"Error processing article {article['url']}: {str(e)}")
+        return None
+
+def process_batch(sources, cutoff_time, db, seen_urls, status_placeholder):
+    """Process a batch of sources with parallel article handling and caching"""
+    batch_articles = []
+    total_article_count = 0
+
+    # Process each source in the batch
+    for source in sources:
+        try:
+            # Skip already processed sources
+            if source in st.session_state.processed_urls:
+                continue
+
+            # Update status
+            current_time = datetime.now().strftime("%H:%M:%S")
+            update_status(f"Scanning: {source}")
+
+            # Find AI articles with caching and parallel processing
+            try:
+                ai_articles = find_ai_articles(source, cutoff_time)
+                # Handle tuple return format if present
+                if isinstance(ai_articles, tuple):
+                    ai_articles = ai_articles[0]
+            except Exception as e:
+                logger.error(f"Error finding articles from {source}: {e}")
+                ai_articles = []
+
+            # Update status if articles found
+            if ai_articles:
+                update_status(f"Found {len(ai_articles)} AI articles from {source}")
+                total_article_count += len(ai_articles)
+
+                # Process articles in parallel when there are multiple
+                processed_articles = []
+                if len(ai_articles) > 3:
+                    with ThreadPoolExecutor(max_workers=3) as executor:
+                        # Submit all articles for processing
+                        future_to_article = {
+                            executor.submit(process_article, article, source, cutoff_time, db, seen_urls): article 
+                            for article in ai_articles if article['url'] not in seen_urls
+                        }
+
+                        # Process results as they complete
+                        for future in as_completed(future_to_article):
+                            article_data = future.result()
+                            if article_data:
+                                processed_articles.append(article_data)
+                                seen_urls.add(article_data['url'])
+                                update_status(f"Added: {article_data['title']}")
+                else:
+                    # Process sequentially for small numbers of articles
+                    for article in ai_articles:
+                        article_data = process_article(article, source, cutoff_time, db, seen_urls)
+                        if article_data:
+                            processed_articles.append(article_data) 
+                            seen_urls.add(article_data['url'])
+                            update_status(f"Added: {article_data['title']}")
+
+                # Add successful articles to batch
+                batch_articles.extend(processed_articles)
+
+            # Mark source as processed
+            st.session_state.processed_urls.add(source)
+
+        except Exception as e:
+            logger.error(f"Error processing source {source}: {str(e)}")
+            continue
+
+    logger.info(f"Processed {len(sources)} sources, found {total_article_count} articles, added {len(batch_articles)} articles")
+    return batch_articles
+
+def main():
+    try:
+        # Add simple particle effect background
+        add_simple_particles()
+
+        # Ensure settings drawer is hidden while fetching
+        if st.session_state.get("is_fetching", False):
+            st.session_state.show_settings = False
+
+        # Custom header with settings button
+        st.markdown(
+            """
+            <style>
+            .header-container {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 1rem;
+            }
+            .settings-btn {
+                padding: 0.5rem;
+                border-radius: 0.375rem;
+                background: transparent;
+                border: 1px solid rgba(250, 250, 250, 0.2);
+                cursor: pointer;
+                margin-top: 8px;
+            }
+            .settings-btn:hover {
+                background: rgba(250, 250, 250, 0.1);
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        header_col1, header_col2 = st.columns([1, 11])
+        with header_col1:
+            gear_disabled = st.session_state.get("is_fetching", False)
+            if st.button(
+                "⚙️",
+                key="settings_btn",
+                help="Settings",
+                type="secondary",
+                disabled=gear_disabled,
+            ):
+                st.session_state.show_settings = not st.session_state.show_settings
+        with header_col2:
+            st.title("GAI Insights Crocs Monitoring Service")
+
+        from utils.ui_components import render_settings_drawer
+
+        fetch_button, config_saved = render_settings_drawer()
+        if config_saved:
+            global evaluation_agent
+            evaluation_agent = EvaluationAgent()
+
+        # Separate section for displaying results
+        results_section = st.container()
+
+        if fetch_button:
+            # First hide settings panel
+            st.session_state.show_settings = False
+            # Close the drawer via query param so it disappears on rerun
+            st.query_params["close_settings"] = "1"
+            # Then reset state for a new scan
+            st.session_state.is_fetching = True
+            st.session_state.pdf_data = None
+            st.session_state.csv_data = None
+            st.session_state.excel_data = None
+            st.session_state.scan_complete = False
+            st.session_state.articles = []
+            # Force a rerun to immediately hide settings
+            st.rerun()
+
+        if fetch_button or st.session_state.is_fetching:
+            try:
+                start_time = datetime.now()
+
+                sources = load_source_sites(test_mode=st.session_state.test_mode)
+                from utils.db_manager import DBManager
+                from urllib.parse import urlparse
+                db = DBManager()
+
+                seen_urls = set()  # Reset seen URLs each time
+                progress_bar = st.progress(0)
+                status_placeholder = st.empty()
+                batch_size = 5
+                total_batches = (len(sources) + batch_size - 1) // batch_size
+
+                for batch_idx in range(total_batches):
+                    start_idx = batch_idx * batch_size
+                    end_idx = min(start_idx + batch_size, len(sources))
+                    current_batch = sources[start_idx:end_idx]
+
+                    # Calculate cutoff time based on selected unit - looking BACK in time
+                    if st.session_state.time_unit == "Weeks":
+                        days_to_subtract = st.session_state.time_value * 7
+                    else:  # Days
+                        days_to_subtract = st.session_state.time_value
+
+                    # Create a cutoff_time in the past
+                    cutoff_time = (
+                        datetime.now().replace(
+                            hour=0, minute=0, second=0, microsecond=0
+                        )
+                        - timedelta(days=days_to_subtract)
+                    )
+                    current_date = datetime.now().strftime('%Y-%m-%d')
+                    logger.info(
+                        f"Today is: {current_date}, Time period: {st.session_state.time_value} {st.session_state.time_unit}, Cutoff: {cutoff_time} (Including articles from {(cutoff_time + timedelta(days=1)).strftime('%Y-%m-%d')} to {current_date})"
+                    )
+
+                    # Process current batch
+                    for source in current_batch:
+                        domain = urlparse(source).netloc or source
+                        with st.spinner(f"Researching {domain}..."):
+                            batch_articles = process_batch([source], cutoff_time, db, seen_urls, status_placeholder)
+
+                        # Add articles to session state if found
+                        if batch_articles:
+                            st.session_state.articles.extend(batch_articles)
+
+                    # Update progress
+                    progress = (batch_idx + 1) / total_batches
+                    progress_bar.progress(progress)
+
+                # When done, mark the scan as complete
+                st.session_state.is_fetching = False
+                st.session_state.scan_complete = True
+
+                # Store the current articles for persistent access
+                st.session_state.current_articles = sort_by_assessment_and_score(
+                    st.session_state.articles.copy()
+                )
+
+                # Generate reports and store them in session state
+                if st.session_state.articles:
+                    st.session_state.pdf_data = generate_pdf_report(st.session_state.current_articles)
+                    st.session_state.csv_data = generate_csv_report(st.session_state.current_articles)
+                    st.session_state.excel_data = generate_excel_report(st.session_state.current_articles)
+
+                # Show completion message and stats
+                end_time = datetime.now()
+                elapsed_time = end_time - start_time
+                minutes = int(elapsed_time.total_seconds() // 60)
+                seconds = elapsed_time.total_seconds() % 60
+                st.session_state.processing_time = f"{minutes}m {seconds:.1f}s"
+
+            except Exception as e:
+                st.session_state.is_fetching = False
+                st.error(f"An error occurred: {str(e)}")
+                logger.error(f"Error in main process: {str(e)}")
+
+        # Always display results if we have them (either from current scan or previous one)
+        if st.session_state.scan_complete and st.session_state.current_articles:
+            with results_section:
+                st.success(f"Found {len(st.session_state.current_articles)} AI articles!")
+                if st.session_state.processing_time:
+                    st.write(f"Processing time: {st.session_state.processing_time}")
+
+                # Always show export options outside of conditional logic to keep them available
+                st.markdown("### 📊 Export Options")
+                export_col1, export_col2, export_col3 = st.columns([1, 1, 1])
+
+                with export_col1:
+                    if st.session_state.pdf_data:
+                        today_date = datetime.now().strftime("%Y-%m-%d")
+                        pdf_filename = f"ai_news_report_{today_date}.pdf"
+                        st.download_button(
+                            "📄 Download PDF Report",
+                            st.session_state.pdf_data,
+                            pdf_filename,
+                            "application/pdf",
+                            use_container_width=True,
+                            key="pdf_download"  # Unique key to avoid conflicts
+                        )
+
+                with export_col2:
+                    if st.session_state.csv_data:
+                        today_date = datetime.now().strftime("%Y-%m-%d")
+                        csv_filename = f"ai_news_report_{today_date}.csv"
+                        st.download_button(
+                            "📊 Download CSV Report",
+                            st.session_state.csv_data,
+                            csv_filename,
+                            "text/csv",
+                            use_container_width=True,
+                            key="csv_download"  # Unique key to avoid conflicts
+                        )
+
+                with export_col3:
+                    if st.session_state.excel_data:
+                        today_date = datetime.now().strftime("%Y-%m-%d")
+                        excel_filename = f"ai_news_report_{today_date}.xlsx"
+                        st.download_button(
+                            "📈 Download Excel Report",
+                            st.session_state.excel_data,
+                            excel_filename,
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True,
+                            key="excel_download"  # Unique key to avoid conflicts
+                        )
+
+                # Show articles
+                st.markdown("### Found AI Articles")
+                for article in st.session_state.current_articles:
+                    st.markdown("---")
+                    st.markdown(f"### [{article['title']}]({article['url']})")
+                    st.markdown(f"Published: {article['date']}")
+                    # Get and process the takeaway text
+                    import re
+
+                    # Helper function to clean and format takeaway text
+                    def clean_takeaway(text):
+                        # First, join any stray numbers and letters without adding extra spaces
+                        text = re.sub(r'(\d+)([a-zA-Z])', r'\1 \2', text)  # Add space between numbers and letters
+                        text = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', text)  # Add space between letters and numbers
+
+                        # Fix dollar amounts with spaces 
+                        text = re.sub(r'\$ *(\d+)', r'$\1', text)  # Remove space after $ sign
+                        text = re.sub(r'\$ *(\d+) *\. *(\d+)', r'$\1.\2', text)  # Fix spaced decimal in dollar amounts
+
+                        # Fix numbers with spaces between digits
+                        text = re.sub(r'(\d+) +(\d{3})', r'\1,\2', text)  # Convert "200 000" to "200,000"
+                        text = re.sub(r'(\d+) *\, *(\d+)', r'\1,\2', text)  # Fix spaced commas
+                        text = re.sub(r'(\d+) *\. *(\d+)', r'\1.\2', text)  # Fix spaced decimals
+
+                        # Fix trailing spaces before punctuation
+                        text = re.sub(r' +([.,!?:;])', r'\1', text)  # Remove space before punctuation
+
+                        # Fix long run-on words without adding spaces within numbers
+                        words = text.split()
+                        processed_words = []
+                        for word in words:
+                            # Don't break numbers or standard patterns
+                            if len(word) > 25 and not re.match(r'^[\d.,]+$', word):
+                                # Only break very long words
+                                chunks = [word[i:i+20] for i in range(0, len(word), 20)]
+                                processed_words.append(" ".join(chunks))
+                            else:
+                                processed_words.append(word)
+
+                        result = " ".join(processed_words)
+
+                        # Final cleanup pass for any remaining issues
+                        result = re.sub(r'(\d+) +(\d{3})', r'\1,\2', result)  # Second pass for larger numbers
+                        result = re.sub(r' +([.,!?:;])', r'\1', result)  # Final check for spaces before punctuation
+
+                        return result
+
+                    takeaway_text = article.get('takeaway', 'No takeaway available')
+                    takeaway_text = clean_takeaway(takeaway_text)
+
+                    # Display the takeaway with custom formatting
+                    st.subheader("Takeaway")
+
+                    # Custom CSS to ensure proper text wrapping
+                    st.markdown("""
+                    <style>
+                    .takeaway-box {
+                        background-color: #1E2530;
+                        border-radius: 5px;
+                        padding: 15px;
+                        margin: 10px 0;
+                        color: #FFFFFF;
+                        word-wrap: break-word;
+                        white-space: normal;
+                        max-width: 100%;
+                        overflow-wrap: break-word;
+                        line-height: 1.5;
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
+
+                    st.markdown(f'<div class="takeaway-box">{takeaway_text}</div>', unsafe_allow_html=True)
+
+                    # Assessment box displayed before criteria details
+                    assessment = article.get('assessment', 'N/A')
+                    score = article.get('assessment_score', 0)
+                    render_assessment_box(assessment, score)
+
+                    # Criteria dashboard in a collapsed expander for compact viewing
+                    criteria = article.get('criteria_results', [])
+                    with st.expander("Criteria Details", expanded=False):
+                        render_criteria_dashboard(criteria)
+        elif st.session_state.scan_complete and not st.session_state.current_articles:
+            with results_section:
+                st.warning("No articles found. Please try adjusting the time period or check the source sites.")
+
+    except Exception as e:
+        st.error("An unexpected error occurred. Please refresh the page.")
+        logger.error(f"Critical error: {str(e)}")
+
+if __name__ == "__main__":
+    main()
+      ]]></content>
+    </file>
+
+    <file path="main_agent_based.py">
+      <content><![CDATA[
+import streamlit as st
+from datetime import datetime
+import logging
+
+# Import the new agent-based components
+from agents.orchestrator import Orchestrator
+from utils.simple_particles import add_simple_particles
+from utils.report_tools import sort_by_assessment_and_score
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Initialize session state if needed
+if 'initialized' not in st.session_state:
+    try:
+        logger.info("Initializing session state")
+        st.session_state.articles = []
+        st.session_state.selected_articles = []
+        st.session_state.scan_status = []
+        st.session_state.test_mode = False
+        st.session_state.processing_time = None
+        st.session_state.processed_urls = set()
+        st.session_state.is_fetching = False
+        st.session_state.pdf_data = None
+        st.session_state.csv_data = None
+        st.session_state.excel_data = None
+        st.session_state.show_settings = True  # Display settings modal on first load
+        st.session_state.time_value = 1  # Default time period value
+        st.session_state.time_unit = "Weeks"  # Default time period unit
+        st.session_state.initialized = True
+        st.session_state.last_update = datetime.now()
+        st.session_state.scan_complete = False
+        st.session_state.current_articles = []
+        
+        # New agent-based workflow components
+        default_config = {
+            'crawler_config': {
+                'max_crawler_workers': 3,
+                'cache_duration_hours': 6,
+                'request_timeout': 10,
+                'max_retries': 3
+            },
+            'analyzer_config': {
+                'cache_duration_hours': 12,
+                'model': 'gpt-4o'
+            },
+            'report_config': {
+                'max_report_articles': 10
+            }
+        }
+        st.session_state.orchestrator_config = default_config
+        st.session_state.orchestrator = Orchestrator(default_config)
+        logger.info("Session state initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing session state: {str(e)}")
+        st.error("Error initializing application. Please refresh the page.")
+
+# Set page config
+st.set_page_config(
+    page_title="AI News Aggregator",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+def update_status(message):
+    """Updates the processing status in the Streamlit UI."""
+    current_time = datetime.now().strftime("%H:%M:%S")
+    status_msg = f"[{current_time}] {message}"
+    st.session_state.scan_status.insert(0, status_msg)
+
+def render_criteria_dashboard(criteria):
+    """Render a styled criteria dashboard below each article."""
+    if not criteria:
+        return
+
+    st.markdown(
+        """
+        <style>
+        .criteria-table {width:100%; border-collapse:collapse; margin-bottom:5px;}
+        .criteria-table th, .criteria-table td {border:1px solid #555; padding:4px 6px; font-size:12px;}
+        .criteria-table th {background-color:#31333F; color:#fff;}
+        .status-true {color:#21ba45; font-weight:bold; text-align:center;}
+        .status-false {color:#db2828; font-weight:bold; text-align:center;}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    rows = "".join(
+        f"<tr><td>{c.get('criteria')}</td><td class='{'status-true' if c.get('status') else 'status-false'}'>{'✅' if c.get('status') else '❌'}</td><td>{c.get('notes')}</td></tr>"
+        for c in criteria
+    )
+    html = f"<table class='criteria-table'><thead><tr><th>Criteria</th><th>Status</th><th>Notes</th></tr></thead><tbody>{rows}</tbody></table>"
+    st.markdown(html, unsafe_allow_html=True)
+
+def render_assessment_box(assessment: str, score: int):
+    """Display assessment and score in a small colored box."""
+    color_map = {"INCLUDE": "#21ba45", "OK": "#f2c037", "CUT": "#db2828"}
+    color = color_map.get(assessment, "#cccccc")
+    st.markdown(
+        f"<div style='border:1px solid {color}; padding:6px 10px; border-radius:4px; display:inline-block; margin-bottom:10px;'>"
+        f"<b>Assessment:</b> <span style='color:{color}'>{assessment}</span> &nbsp; "
+        f"<b>Score:</b> {score}%"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+def main():
+    try:
+        # Add background effect
+        add_simple_particles()
+
+        st.title("GAI Insights Crocs Monitoring Service")
+
+        # Floating settings button and modal
+        st.markdown(
+            """
+            <style>
+            .settings-btn {position: fixed; top: 15px; right: 15px; z-index: 1000;}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("<div class='settings-btn'>", unsafe_allow_html=True)
+        if st.button("⚙️", key="settings_btn", help="Settings", type="secondary"):
+            st.session_state.show_settings = not st.session_state.show_settings
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        from utils.ui_components import render_settings_drawer
+
+        fetch_button, _ = render_settings_drawer()
+
+        # Create container for results
+        results_section = st.container()
+
+        # Clear previous results when starting a new fetch
+        if fetch_button:
+            st.session_state.show_settings = False
+            st.query_params["close_settings"] = "1"
+            st.session_state.is_fetching = True
+            st.session_state.orchestrator = Orchestrator(
+                st.session_state.get('orchestrator_config', {})
+            )
+            st.session_state.pdf_data = None
+            st.session_state.csv_data = None
+            st.session_state.excel_data = None
+            st.session_state.scan_complete = False
+            st.session_state.articles = []
+            st.session_state.scan_status = []
+            st.rerun()
+
+        # Process articles using the agent-based architecture
+        if fetch_button or st.session_state.is_fetching:
+            try:
+                # Load sources
+                sources = st.session_state.orchestrator.load_sources(test_mode=st.session_state.test_mode)
+                
+                # Show progress indicator
+                progress_bar = st.progress(0)
+                status_container = st.empty()
+                
+                with st.spinner("Processing news sources..."):
+                    # Run the orchestrated workflow
+                    result = st.session_state.orchestrator.run_workflow(
+                        sources,
+                        time_period=st.session_state.time_value,
+                        time_unit=st.session_state.time_unit
+                    )
+                    
+                    # Update UI with status messages
+                    st.session_state.scan_status = result['status']
+                    
+                    # Store results in session state
+                    if result['success']:
+                        st.session_state.articles = result['articles']
+                        st.session_state.selected_articles = result.get('selected_articles', [])
+                        st.session_state.pdf_data = result['reports'].get('pdf')
+                        st.session_state.csv_data = result['reports'].get('csv')
+                        st.session_state.excel_data = result['reports'].get('excel')
+                        st.session_state.processing_time = result['execution_time']
+                        st.session_state.scan_complete = True
+                        st.session_state.current_articles = sort_by_assessment_and_score(
+                            st.session_state.selected_articles.copy()
+                        )
+                    else:
+                        st.error(f"An error occurred: {result.get('error', 'Unknown error')}")
+                    
+                # Complete progress bar
+                progress_bar.progress(100)
+                
+                # Reset processing flag
+                st.session_state.is_fetching = False
+                
+            except Exception as e:
+                st.session_state.is_fetching = False
+                st.error(f"An error occurred: {str(e)}")
+                logger.error(f"Error in main process: {str(e)}")
+
+        # Display status messages
+        if st.session_state.scan_status:
+            with st.expander("Processing Log", expanded=False):
+                for msg in st.session_state.scan_status:
+                    st.text(msg)
+
+        # Display results
+        if st.session_state.scan_complete and st.session_state.current_articles:
+            with results_section:
+                st.success(f"Found {len(st.session_state.current_articles)} AI articles!")
+                if st.session_state.processing_time:
+                    st.write(f"Processing time: {st.session_state.processing_time}")
+
+                # Show export options
+                st.markdown("### 📊 Export Options")
+                export_col1, export_col2, export_col3 = st.columns([1, 1, 1])
+
+                with export_col1:
+                    if st.session_state.pdf_data:
+                        today_date = datetime.now().strftime("%Y-%m-%d")
+                        pdf_filename = f"ai_news_report_{today_date}.pdf"
+                        st.download_button(
+                            "📄 Download PDF Report",
+                            st.session_state.pdf_data,
+                            pdf_filename,
+                            "application/pdf",
+                            use_container_width=True,
+                            key="pdf_download"
+                        )
+
+                with export_col2:
+                    if st.session_state.csv_data:
+                        today_date = datetime.now().strftime("%Y-%m-%d")
+                        csv_filename = f"ai_news_report_{today_date}.csv"
+                        st.download_button(
+                            "📊 Download CSV Report",
+                            st.session_state.csv_data,
+                            csv_filename,
+                            "text/csv",
+                            use_container_width=True,
+                            key="csv_download"
+                        )
+
+                with export_col3:
+                    if st.session_state.excel_data:
+                        today_date = datetime.now().strftime("%Y-%m-%d")
+                        excel_filename = f"ai_news_report_{today_date}.xlsx"
+                        st.download_button(
+                            "📈 Download Excel Report",
+                            st.session_state.excel_data,
+                            excel_filename,
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True,
+                            key="excel_download"
+                        )
+
+                # Show articles
+                st.markdown("### Found AI Articles")
+                for article in st.session_state.current_articles:
+                    st.markdown("---")
+                    st.markdown(f"### [{article['title']}]({article['url']})")
+                    st.markdown(f"Published: {article['date']}")
+                    
+                    # Display takeaway
+                    takeaway = article.get('takeaway', 'No takeaway available')
+                    st.markdown(f"**Key Takeaway:** {takeaway}")
+                    
+                    # Display key points if available
+                    key_points = article.get('key_points', [])
+                    if key_points and len(key_points) > 0:
+                        st.markdown("**Key Points:**")
+                        for point in key_points:
+                            st.markdown(f"• {point}")
+
+                    # Assessment summary shown before criteria details
+                    assessment = article.get('assessment', 'N/A')
+                    score = article.get('assessment_score', 0)
+                    render_assessment_box(assessment, score)
+
+                    # Criteria dashboard in a collapsed expander
+                    criteria = article.get('criteria_results', [])
+                    with st.expander("Criteria Details", expanded=False):
+                        render_criteria_dashboard(criteria)
+
+    except Exception as e:
+        st.error(f"Application error: {str(e)}")
+        logger.error(f"Application error: {str(e)}")
+
+if __name__ == "__main__":
+    main()
+      ]]></content>
+    </file>
+
+  </category>
+
+  <!-- AGENT ARCHITECTURE -->
+  <category name="Agent Architecture">
+    
+    <file path="agents/base_agent.py">
+      <content><![CDATA[
+import os
+import logging
+from datetime import datetime
+import json
+from openai import OpenAI
+import traceback
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+class BaseAgent:
+    """
+    Base class for all agents in the AI News Aggregation system
+    Provides common functionality and standardized interfaces
+    """
+    
+    def __init__(self, config=None):
+        """Initialize the base agent with configuration settings"""
+        self.config = config or {}
+        self.start_time = datetime.now()
+        self.api_client = None
+        self.initialize_openai()
+        
+    def initialize_openai(self):
+        """Initialize OpenAI client if API key is available"""
+        try:
+            api_key = os.getenv('OPENAI_API_KEY')
+            if api_key:
+                self.api_client = OpenAI(api_key=api_key)
+                logger.info(f"{self.__class__.__name__} initialized OpenAI client")
+            else:
+                logger.warning(f"{self.__class__.__name__} could not initialize OpenAI client: Missing API key")
+        except Exception as e:
+            logger.error(f"{self.__class__.__name__} OpenAI initialization error: {str(e)}")
+            
+    def log_event(self, message, level="info"):
+        """Standardized logging across all agents"""
+        agent_name = self.__class__.__name__
+        
+        if level == "debug":
+            logger.debug(f"[{agent_name}] {message}")
+        elif level == "info":
+            logger.info(f"[{agent_name}] {message}")
+        elif level == "warning":
+            logger.warning(f"[{agent_name}] {message}")
+        elif level == "error":
+            logger.error(f"[{agent_name}] {message}")
+        elif level == "critical":
+            logger.critical(f"[{agent_name}] {message}")
+            
+    def execute_ai_prompt(self, prompt, model="gpt-4o", response_format="text", max_tokens=1500):
+        """Execute an AI prompt with standardized error handling"""
+        if not self.api_client:
+            self.log_event("No OpenAI client available for prompt execution", "warning")
+            return None
+            
+        try:
+            # Set up response format
+            format_config = None
+            if response_format == "json_object":
+                format_config = {"type": "json_object"}
+            
+            # Execute the API call
+            response = self.api_client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                response_format=format_config,
+                max_tokens=max_tokens
+            )
+            
+            # Extract and process the response
+            content = response.choices[0].message.content if response.choices else None
+            
+            if response_format == "json_object" and content:
+                try:
+                    return json.loads(content)
+                except json.JSONDecodeError as e:
+                    self.log_event(f"Failed to parse JSON response: {e}", "error")
+                    return None
+            
+            return content
+            
+        except Exception as e:
+            self.log_event(f"AI prompt execution error: {str(e)}", "error")
+            self.log_event(traceback.format_exc(), "debug")
+            return None
+    
+    def process(self, input_data):
+        """
+        Process abstract method that should be implemented by all agent classes
+        """
+        raise NotImplementedError("Agents must implement the process method")
+        
+    def report_status(self):
+        """Report on agent processing status"""
+        elapsed = datetime.now() - self.start_time
+        seconds = elapsed.total_seconds()
+        if seconds < 60:
+            time_str = f"{seconds:.1f} seconds"
+        else:
+            minutes = seconds / 60
+            time_str = f"{minutes:.1f} minutes"
+            
+        return {
+            "agent": self.__class__.__name__,
+            "elapsed_time": time_str,
+            "status": "Active"
+        }
+      ]]></content>
+    </file>
+
+    <file path="agents/orchestrator.py">
+      <content><![CDATA[
+import os
+import logging
+from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional
+import time
+import json
+
+from agents.base_agent import BaseAgent
+from agents.crawler_agent import CrawlerAgent
+from agents.analyzer_agent import AnalyzerAgent
+from agents.report_agent import ReportAgent
+from agents.evaluation_agent import EvaluationAgent
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+class Orchestrator:
+    """
+    Coordinates the workflow between different agents in the news aggregation system
+    """
+    
+    def __init__(self, config=None):
+        """Initialize the orchestrator with configuration settings"""
+        self.config = config or {}
+        self.start_time = datetime.now()
+        
+        # Initialize agent instances
+        self.crawler = CrawlerAgent(self.config.get('crawler_config', {}))
+        self.analyzer = AnalyzerAgent(self.config.get('analyzer_config', {}))
+        self.evaluator = EvaluationAgent(self.config.get('evaluation_config', {}))
+        self.reporter = ReportAgent(self.config.get('report_config', {}))
+        
+        # Processing state
+        self.articles = []
+        self.analyzed_articles = []
+        self.reports = {}
+        self.status_messages = []
+        self.is_processing = False
+        
+        logger.info("Orchestrator initialized with all agents ready")
+    
+    def update_status(self, message):
+        """Update processing status with timestamp"""
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        status_msg = f"[{timestamp}] {message}"
+        self.status_messages.insert(0, status_msg)
+        logger.info(f"Status: {message}")
+        
+    def run_workflow(self, source_urls, time_period=7, time_unit="Days"):
+        """
+        Run the complete news aggregation workflow with all agents
+        
+        Args:
+            source_urls: List of source URLs to search for articles
+            time_period: Number of time units to look back
+            time_unit: "Days" or "Weeks"
+            
+        Returns:
+            Dict containing workflow results
+        """
+        self.is_processing = True
+        self.start_time = datetime.now()
+        self.status_messages = []
+        self.update_status(f"Starting news aggregation workflow with {len(source_urls)} sources")
+        
+        try:
+            # Calculate cutoff time
+            days_to_subtract = time_period * 7 if time_unit == "Weeks" else time_period
+            cutoff_time = (
+                datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                - timedelta(days=days_to_subtract)
+            )
+            self.update_status(
+                f"Time period: {time_period} {time_unit}, Cutoff: {cutoff_time}"
+            )
+            
+            # Step 1: Crawl sources for articles
+            self.update_status("Crawling sources for AI articles...")
+            crawler_result = self.crawler.process(source_urls, cutoff_time)
+            
+            if not crawler_result or len(crawler_result) == 0:
+                self.update_status("No articles found. Workflow complete.")
+                self.is_processing = False
+                return {
+                    "success": True,
+                    "articles": [],
+                    "reports": {},
+                    "status": self.status_messages,
+                    "execution_time": self._get_execution_time()
+                }
+                
+            self.articles = crawler_result
+            self.update_status(f"Found {len(self.articles)} potential articles")
+            
+            # Step 2: Analyze and validate articles
+            self.update_status("Analyzing article content...")
+            
+            # First, fetch full content for any articles that don't have it
+            for article in self.articles:
+                if not article.get('content'):
+                    self.update_status(f"Fetching content for: {article['title']}")
+                    article['content'] = self.crawler.extract_full_content(article['url'])
+            
+            filtered_articles = [a for a in self.articles if a.get('content')]
+            self.update_status(f"Analyzing {len(filtered_articles)} articles with content")
+            
+            self.analyzed_articles = self.analyzer.process(filtered_articles)
+            self.update_status(f"Successfully analyzed {len(self.analyzed_articles)} articles")
+
+            # Step 2b: Evaluate against selection criteria
+            self.update_status("Evaluating articles against criteria...")
+            self.analyzed_articles = self.evaluator.evaluate(self.analyzed_articles)
+            
+            # Step 3: Generate reports
+            self.update_status("Generating reports...")
+            report_result = self.reporter.process(self.analyzed_articles)
+            
+            self.reports = report_result
+            selected_count = len(report_result.get('selected_articles', []))
+            self.update_status(f"Generated reports with {selected_count} selected articles")
+            
+            # Complete workflow
+            self.is_processing = False
+            execution_time = self._get_execution_time()
+            self.update_status(f"Workflow complete in {execution_time}")
+            
+            return {
+                "success": True,
+                "articles": self.analyzed_articles,
+                "selected_articles": report_result.get('selected_articles', []),
+                "reports": {
+                    "pdf": report_result.get('pdf_report'),
+                    "csv": report_result.get('csv_report'),
+                    "excel": report_result.get('excel_report')
+                },
+                "status": self.status_messages,
+                "execution_time": execution_time
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in workflow: {str(e)}")
+            self.update_status(f"Error: {str(e)}")
+            self.is_processing = False
+            return {
+                "success": False,
+                "error": str(e),
+                "status": self.status_messages,
+                "execution_time": self._get_execution_time()
+            }
+    
+    def _get_execution_time(self):
+        """Calculate execution time as a formatted string"""
+        elapsed = datetime.now() - self.start_time
+        seconds = elapsed.total_seconds()
+        
+        if seconds < 60:
+            return f"{seconds:.1f} seconds"
+        else:
+            minutes = int(seconds // 60)
+            remaining_seconds = int(seconds % 60)
+            return f"{minutes}m {remaining_seconds}s"
+            
+    def get_status(self):
+        """Get current status information"""
+        return {
+            "is_processing": self.is_processing,
+            "articles_found": len(self.articles),
+            "articles_analyzed": len(self.analyzed_articles),
+            "reports_generated": bool(self.reports),
+            "execution_time": self._get_execution_time(),
+            "status_messages": self.status_messages
+        }
+        
+    def load_sources(self, file_path=None, test_mode=False):
+        """Load source websites from configuration or file"""
+        if test_mode:
+            # Return test sources only
+            return [
+                'https://www.wired.com/tag/artificial-intelligence/',
+                'https://www.retaildive.com/topic/technology/',
+                'https://techcrunch.com/category/artificial-intelligence/'
+            ]
+            
+        try:
+            if file_path and os.path.exists(file_path):
+                with open(file_path, 'r') as f:
+                    sources = [line.strip() for line in f if line.strip()]
+                logger.info(f"Loaded {len(sources)} sources from {file_path}")
+                return sources
+            elif 'sources' in self.config:
+                sources = self.config['sources']
+                logger.info(f"Loaded {len(sources)} sources from config")
+                return sources
+            else:
+                # Default sources if none provided
+                logger.warning("No source configuration found, using defaults")
+                return [
+                    'https://www.wired.com/tag/artificial-intelligence/',
+                    'https://techcrunch.com/category/artificial-intelligence/',
+                    'https://venturebeat.com/category/ai/'
+                ]
+        except Exception as e:
+            logger.error(f"Error loading sources: {str(e)}")
+            return []
+      ]]></content>
+    </file>
+
+    <file path="agents/evaluation_agent.py">
+      <content><![CDATA[
+import re
+from agents.base_agent import BaseAgent
+from utils.config_manager import load_config
+
+
+class EvaluationAgent(BaseAgent):
+    """Evaluate articles against selection criteria."""
+
+    def __init__(self, config=None):
+        cfg = load_config().get("evaluation", {})
+        if config:
+            cfg.update(config)
+        super().__init__(cfg)
+        self.companies = cfg.get("companies", [])
+        self.tools = cfg.get("tools", [])
+        self.retail_terms = cfg.get("retail_terms", [])
+        self.roi_pattern = cfg.get(
+            "roi_pattern",
+            r"\d+%|\$\d+|\d+\s*million|\d+\s*billion|increased|reduced|improved|saved",
+        )
+        self.promotional_pattern = cfg.get(
+            "promotional_pattern",
+            r"partner|partnership|sponsor|press release|proud|excited|pleased to|delighted to",
+        )
+        self.deployment_terms = cfg.get(
+            "deployment_terms",
+            ["deployed", "implemented", "launched", "in production", "currently using", "rolled out"],
+        )
+        self.major_platforms = cfg.get(
+            "major_platforms",
+            ["openai", "microsoft", "google", "amazon", "meta"],
+        )
+
+    def evaluate(self, articles):
+        evaluated = []
+        for article in articles:
+            result = self.evaluate_article(article)
+            article.update(result)
+            evaluated.append(article)
+        return evaluated
+
+    def _find_entity(self, text):
+        for name in self.companies:
+            if re.search(rf"\b{re.escape(name)}\b", text, re.IGNORECASE):
+                return name
+        # Look for government agencies and other organizations
+        match = re.search(r"\b([A-Z][A-Za-z&]+(?:\s+[A-Z][A-Za-z&]+){0,3})\b", text)
+        if match:
+            return match.group(1)
+        return None
+
+    def _find_tool(self, text):
+        for name in self.tools:
+            if re.search(rf"\b{re.escape(name)}\b", text, re.IGNORECASE):
+                return name
+        if re.search(r"generative ai|large language model|llm", text, re.IGNORECASE):
+            return "Generative AI"
+        return None
+
+    def evaluate_article(self, article):
+        text = f"{article.get('title','')} {article.get('content','')} {article.get('takeaway','')}"
+        text_lower = text.lower()
+
+        criteria = []
+        score = 0
+
+        # Criterion 1: Specific entity using AI tool
+        entity = self._find_entity(text)
+        tool = self._find_tool(text)
+        if entity and tool:
+            criteria.append({
+                "criteria": "Specific companies using AI tools",
+                "status": True,
+                "notes": f"{entity} using {tool}"
+            })
+            score += 1
+        else:
+            criteria.append({
+                "criteria": "Specific companies using AI tools",
+                "status": False,
+                "notes": "No specific company/tool usage identified"
+            })
+
+        # Criterion 2: Third-party GenAI tool
+        is_third_party = not re.search(r"own|homegrown|proprietary|in-house|its own", text_lower)
+        if tool and is_third_party:
+            criteria.append({
+                "criteria": "Tool is third-party Gen AI",
+                "status": True,
+                "notes": f"{tool} is an external, open-source model"
+            })
+            score += 1
+        else:
+            criteria.append({
+                "criteria": "Tool is third-party Gen AI",
+                "status": False,
+                "notes": "Using internal/proprietary solution"
+            })
+
+        # Criterion 3: Measurable ROI/Business impact
+        if re.search(self.roi_pattern, text_lower) and any(term in text_lower for term in ["revenue", "sales", "cost", "efficiency", "productivity"]):
+            criteria.append({
+                "criteria": "Measurable ROI / Business impact",
+                "status": True,
+                "notes": "Clear metrics tied to business outcomes"
+            })
+            score += 1
+        else:
+            criteria.append({
+                "criteria": "Measurable ROI / Business impact",
+                "status": False,
+                "notes": "No quantifiable business metrics provided"
+            })
+
+        # Criterion 4: Retail/E-commerce relevance
+        retail_relevance = any(term in text_lower for term in self.retail_terms)
+        if retail_relevance:
+            criteria.append({
+                "criteria": "Relevance to retail priorities",
+                "status": True,
+                "notes": "Directly relates to retail/e-commerce operations"
+            })
+            score += 1
+        else:
+            criteria.append({
+                "criteria": "Relevance to retail priorities",
+                "status": False,
+                "notes": "Not tied to e-commerce, personalization, or retail"
+            })
+
+        # Criterion 5: Neutral tone
+        promotional = re.search(self.promotional_pattern, text_lower)
+        if not promotional:
+            criteria.append({
+                "criteria": "Neutral tone",
+                "status": True,
+                "notes": "Focuses on reporting rather than promotion"
+            })
+            score += 1
+        else:
+            criteria.append({
+                "criteria": "Neutral tone",
+                "status": False,
+                "notes": "Contains promotional language"
+            })
+
+        # Criterion 6: Concrete implementation vs fluff
+        if any(t in text_lower for t in self.deployment_terms):
+            criteria.append({
+                "criteria": "Not customer-service or visionary fluff",
+                "status": True,
+                "notes": "Descriptive of actual deployment"
+            })
+            score += 1
+        else:
+            criteria.append({
+                "criteria": "Not customer-service or visionary fluff",
+                "status": False,
+                "notes": "Focuses on future possibilities/customer service"
+            })
+
+        # Criterion 7: Major platform impact
+        platform_impact = False
+        if any(p in text_lower for p in self.major_platforms) and re.search(r"retail|commerce|shopping|marketplace", text_lower):
+            platform_impact = True
+            criteria.append({
+                "criteria": "OpenAI / Microsoft / Google release impact",
+                "status": True,
+                "notes": "Major platform update with retail angle"
+            })
+            score += 1
+        else:
+            criteria.append({
+                "criteria": "OpenAI / Microsoft / Google release impact",
+                "status": False,
+                "notes": "No significant retail platform impact"
+            })
+
+        # Assessment determination based on strict criteria
+        if score >= 5 and retail_relevance:
+            assessment = "INCLUDE"
+        elif score >= 3 and retail_relevance:
+            assessment = "OK"
+        else:
+            assessment = "CUT"
+
+        assessment_score = int((score / 6) * 100)
+
+        return {
+            "criteria_results": criteria,
+            "assessment": assessment,
+            "assessment_score": assessment_score,
+        }
+      ]]></content>
+    </file>
+
+  </category>
+
+  <!-- UTILITIES & CORE LOGIC -->
+  <category name="Utilities & Core Logic">
+    
+    <file path="utils/content_extractor.py">
+      <content><![CDATA[
+# Importing ThreadPoolExecutor inside process_batch to fix the scope issue.
+import trafilatura
+import pandas as pd
+from typing import List, Dict, Optional, Tuple, Any
+import requests
+from bs4 import BeautifulSoup
+import logging
+import time
+from datetime import datetime, timedelta
+from utils.common import parse_date
+import pytz
+from urllib.parse import urljoin
+import re
+import functools
+import hashlib
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Thread
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# Simple cache for web requests and extracted content
+_content_cache = {}
+_metadata_cache = {}
+
+class TooManyRequestsError(Exception):
+    pass
+
+def cache_content(max_age_seconds=3600):
+    """Decorator to cache content extraction results"""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            # Create a cache key based on the URL (first argument to most functions)
+            if not args or not isinstance(args[0], str):
+                return func(*args, **kwargs)
+
+            url = args[0]
+            cache_key = f"{func.__name__}:{url}"
+
+            # Check if we have a valid cached result
+            if cache_key in _content_cache:
+                timestamp, result = _content_cache[cache_key]
+                if time.time() - timestamp < max_age_seconds:
+                    logger.info(f"Using cached content for {url}")
+                    return result
+
+            # Call the function and cache the result
+            result = func(*args, **kwargs)
+            if result:  # Only cache successful results
+                _content_cache[cache_key] = (time.time(), result)
+            return result
+
+        return wrapper
+    return decorator
+
+def load_source_sites(test_mode: bool = False) -> List[str]:
+    """Load the source sites from the CSV file."""
+    try:
+        df = pd.read_csv('data/search_sites.csv', header=None)
+        sites = df[0].tolist()
+
+        # Remove any empty strings or invalid URLs
+        sites = [site.strip() for site in sites if isinstance(site, str) and site.strip()]
+
+        # Ensure we don't process duplicate sites
+        sites = list(dict.fromkeys(sites))
+
+        if test_mode:
+            logger.info("Running in test mode - using 1 source: TechCrunch AI")
+            return [
+                'https://techcrunch.com/category/artificial-intelligence/'
+            ]
+
+        logger.info(f"Loaded {len(sites)} source sites for crawling")
+        return sites
+    except Exception as e:
+        logger.error(f"Error loading source sites: {e}")
+        return []
+
+@cache_content(max_age_seconds=21600)  # Cache for 6 hours
+def extract_metadata(url: str, cutoff_time: datetime) -> Optional[Dict[str, str]]:
+    """Extract and validate metadata with caching and improved error handling."""
+    import json  # Import at function level to ensure it's available
+
+    try:
+        # Check if we already have the metadata cached
+        cache_key = f"metadata:{url}"
+        if cache_key in _metadata_cache:
+            timestamp, meta_data = _metadata_cache[cache_key]
+            if time.time() - timestamp < 21600:  # 6 hours
+                logger.info(f"Using cached metadata for {url}")
+                return meta_data
+
+        # Fetch the content - trafilatura doesn't support timeout parameter directly
+        downloaded = trafilatura.fetch_url(url)
+        if not downloaded:
+            logger.warning(f"Failed to download content from {url}")
+            return None
+
+        # Use trafilatura to extract metadata
+        metadata = trafilatura.extract(
+            downloaded,
+            include_links=True,
+            include_images=True,
+            include_tables=True,
+            with_metadata=True,
+            output_format='json',
+            favor_recall=True
+        )
+
+        if metadata:
+            try:
+                meta_dict = json.loads(metadata)
+                result = {
+                    'title': meta_dict.get('title', '').strip(),
+                    'date': meta_dict.get('date', datetime.now(pytz.UTC).strftime('%Y-%m-%d')),
+                    'url': url
+                }
+
+                # Cache the result
+                _metadata_cache[cache_key] = (time.time(), result)
+                return result
+
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON parsing error for {url}: {e}")
+                # Fallback metadata
+                result = {
+                    'title': "Article from " + url.split('/')[2],
+                    'date': datetime.now(pytz.UTC).strftime('%Y-%m-%d'),
+                    'url': url
+                }
+                return result
+
+    except Exception as e:
+        logger.error(f"Error extracting metadata from {url}: {str(e)}")
+        return None
+
+    return None
+
+@cache_content(max_age_seconds=43200)  # Cache for 12 hours
+def extract_full_content(url: str) -> Optional[str]:
+    """Extract full content with caching and smart retries."""
+    max_retries = 3
+    retry_delay = 2  # Start with a 2-second delay
+
+    for attempt in range(max_retries):
+        try:
+            # Use trafilatura to get content
+            downloaded = trafilatura.fetch_url(url)
+            if downloaded:
+                content = trafilatura.extract(
+                    downloaded,
+                    include_links=True,
+                    include_images=True,
+                    include_tables=True,
+                    with_metadata=False,
+                    favor_recall=True
+                )
+                if content:
+                    # Clean whitespace and normalize content
+                    content = re.sub(r'\s+', ' ', content).strip()
+                    return content
+
+            # Exponential backoff between retries
+            if attempt < max_retries - 1:
+                # Wait longer between each attempt (exponential backoff)
+                wait_time = retry_delay * (2 ** attempt)
+                logger.info(f"Retry {attempt+1}/{max_retries} for {url} in {wait_time}s")
+                time.sleep(wait_time)
+
+        except Exception as e:
+            logger.error(f"Error extracting content from {url} (attempt {attempt + 1}): {str(e)}")
+            if attempt < max_retries - 1:
+                # Wait longer between each attempt (exponential backoff)
+                wait_time = retry_delay * (2 ** attempt)
+                logger.info(f"Retry {attempt+1}/{max_retries} for {url} in {wait_time}s")
+                time.sleep(wait_time)
+
+    logger.warning(f"Failed to extract content from {url} after {max_retries} attempts")
+    return None
+
+def is_consent_or_main_page(text: str) -> bool:
+    """Check if the page is a consent form or main landing page."""
+    consent_indicators = [
+        'cookie policy',
+        'privacy notice',
+        'consent form',
+        'accept cookies',
+        'terms of use',
+        'privacy policy'
+    ]
+    text_lower = text.lower()
+    return any(indicator in text_lower for indicator in consent_indicators)
+
+def make_request_with_backoff(url: str, max_retries: int = 3, initial_delay: int = 5) -> Optional[requests.Response]:
+    """Make HTTP request with exponential backoff."""
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+
+    for attempt in range(max_retries):
+        try:
+            delay = initial_delay * (2 ** attempt)
+            if attempt > 0:
+                time.sleep(delay)
+
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            return response
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request error for {url} (attempt {attempt + 1}): {str(e)}")
+            if attempt == max_retries - 1:
+                raise
+
+    return None
+
+def similar_titles(title1: str, title2: str) -> bool:
+    """Checks if two titles are similar (simplified example)."""
+    # Replace with a more robust similarity check if needed (e.g., using difflib)
+    return title1.lower() == title2.lower()
+
+def validate_ai_relevance(article_data):
+    """Validate if an article is meaningfully about AI technology or applications."""
+    title = article_data.get('title', '').lower()
+    summary = article_data.get('summary', '').lower()
+    content = article_data.get('content', '').lower()
+
+    # Check if the title explicitly mentions AI
+    if any(term in title for term in ['ai', 'artificial intelligence', 'machine learning', 'chatgpt', 'generative']):
+        return {
+            "is_relevant": True,
+            "reason": f"Direct AI mention in title: {article_data.get('title')}"
+        }
+
+    # If found in potential AI articles, consider it relevant
+    if "Found potential AI article:" in article_data.get('_source_log', ''):
+        return {
+            "is_relevant": True,
+            "reason": "Identified as potential AI article during initial scan"
+        }
+
+    return {
+        "is_relevant": True,  # Default to including articles that made it this far
+        "reason": "Passed initial AI content scan"
+    }
+
+def is_specific_article(metadata: Dict[str, str]) -> bool:
+    """
+    Validate if the content represents a specific article rather than a category/section page.
+    Applied after finding AI articles, before presenting to user.
+
+    Returns:
+        bool: True if content appears to be a specific article, False otherwise
+    """
+    if not metadata:
+        return False
+
+    title = metadata.get('title', '').lower()
+    url = metadata.get('url', '').lower()
+
+    # Only exclude obvious non-articles
+    url_patterns_to_exclude = [
+        r'/privacy\b',
+        r'/terms\b',
+        r'/about\b',
+        r'/contact\b'
+    ]
+
+    # Exclude common directory pages like category or tag listings
+    directory_patterns = [
+        r'/(category|categories)/[^/]+/?$',
+        r'/tag(s)?/[^/]+/?$',
+        r'/topic(s)?/[^/]+/?$'
+    ]
+
+    all_patterns = url_patterns_to_exclude + directory_patterns
+
+    if any(re.search(pattern, url) for pattern in all_patterns):
+        logger.info(f"Excluding non-article URL: {url}")
+        return False
+
+    # Accept more titles, only exclude extremely short ones
+    if len(title.split()) < 2 and len(title) < 5:
+        logger.info(f"Excluding too short title: {title}")
+        return False
+
+    return True
+
+def clean_article_title(title):
+    """Remove 'Permalink to' prefix and other common prefixes from article titles"""
+    if title.startswith("Permalink to "):
+        return title[len("Permalink to "):]
+    return title
+
+def process_link(link, source_url, ai_regex, cutoff_time, seen_urls):
+    """Process a single link to determine if it's an AI-related article"""
+    try:
+        href = link['href']
+        if not href.startswith(('http://', 'https://')):
+            href = urljoin(source_url, href)
+
+        # Skip if we've already processed this URL
+        if href in seen_urls:
+            return None
+
+        link_text = (link.text or '').strip()
+        title = link.get('title', '').strip() or link_text
+
+        # Clean the title to remove any "Permalink to" prefix
+        title = clean_article_title(title)
+
+        # Check if title contains AI-related keywords
+        if not ai_regex.search(title):
+            return None
+
+        logger.info(f"Found potential AI article: {title}")
+        metadata = extract_metadata(href, cutoff_time)
+
+        if not metadata:
+            return None
+
+        # Filter out directory pages like category or tag listings
+        if not is_specific_article({'title': metadata.get('title', title), 'url': href}):
+            return None
+
+        # Parse the article date using flexible formats
+        try:
+            article_date = parse_date(metadata['date'])
+            if not article_date:
+                raise ValueError(f"Unrecognized date format: {metadata['date']}")
+
+            # Add UTC timezone to match cutoff_time
+            if article_date.tzinfo:
+                article_date = article_date.astimezone(pytz.UTC)
+            else:
+                article_date = pytz.UTC.localize(article_date)
+
+            # Ensure cutoff_time is timezone aware
+            if not cutoff_time.tzinfo:
+                cutoff_time = pytz.UTC.localize(cutoff_time)
+
+            # Add debugging for date comparison
+            logger.info(f"Article date: {article_date}, Cutoff time: {cutoff_time}")
+            # Only add articles that are newer than cutoff time (articles published AFTER the cutoff)
+            if article_date > cutoff_time:
+                logger.info(f"Found AI article within time range: {title}")
+                # Ensure the title is cleaned before adding to articles
+                cleaned_title = clean_article_title(title)
+                return {
+                    'title': cleaned_title,
+                    'url': href,
+                    'date': metadata['date'],
+                    'source': source_url,
+                    'takeaway': ''  # Will be populated by AI analyzer
+                }
+            else:
+                logger.info(f"Skipping article older than cutoff: {title} ({metadata['date']}) - Expected newer than {cutoff_time}")
+                return None
+        except ValueError as e:
+            logger.error(f"Error parsing date for article {title}: {e}")
+            return None
+
+    except Exception as e:
+        logger.error(f"Error processing link: {str(e)}")
+        return None
+
+def find_ai_articles(source_url, cutoff_time):
+    """Find AI-related articles from a source URL using parallel processing"""
+    logger.info(f"Searching with cutoff time: {cutoff_time}")
+    articles = []
+    seen_urls = set()
+    source_status = {
+        'url': source_url,
+        'processed': False,
+        'error': None,
+        'article_count': 0
+    }
+
+    try:
+        # Validate URL format
+        if not source_url.startswith(('http://', 'https://')):
+            source_url = f'https://{source_url}'
+
+        logger.info(f"Processing source: {source_url}")
+
+        # Cache key for this source request
+        cache_key = f"source_content:{source_url}"
+        response_text = None
+
+        # Check cache first
+        if cache_key in _content_cache:
+            timestamp, cached_content = _content_cache[cache_key]
+            # Use cache if less than 1 hour old
+            if time.time() - timestamp < 3600:
+                logger.info(f"Using cached source content for {source_url}")
+                response_text = cached_content
+
+        # Fetch if not cached
+        if not response_text:
+            response = make_request_with_backoff(source_url)
+            if not response:
+                logger.error(f"Could not fetch content from {source_url}")
+                return []
+
+            if response.status_code != 200:
+                logger.error(f"Failed to fetch {source_url}: Status {response.status_code}")
+                return []
+
+            response_text = response.text
+            # Cache the response
+            _content_cache[cache_key] = (time.time(), response_text)
+
+        soup = BeautifulSoup(response_text, 'html.parser')
+
+        # Updated AI patterns with optimized regex
+        ai_patterns = [
+            r'\b[Aa][Ii]\b',  # Standalone "AI"
+            r'\b[Aa][Ii]-[a-zA-Z]+\b',  # AI-powered, AI-driven, etc.
+            r'\b[a-zA-Z]+-[Aa][Ii]\b',  # gen-AI, etc.
+            r'\bartificial intelligence\b',
+            r'\bmachine learning\b',
+            r'\bdeep learning\b',
+            r'\bneural network\b',
+            r'\bgenerative ai\b',
+            r'\bchatgpt\b',
+            r'\blarge language model\b',
+            r'\bllm\b'
+        ]
+
+        ai_regex = re.compile('|'.join(ai_patterns), re.IGNORECASE)
+        logger.info(f"Scanning URL: {source_url}")
+
+        # Get all links with href
+        all_links = soup.find_all('a', href=True)
+
+        # Process links in parallel for efficiency - when more than 5 links
+        if len(all_links) > 5:
+            # Create thread pool
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                # Submit all links for processing
+                future_to_link = {
+                    executor.submit(process_link, link, source_url, ai_regex, cutoff_time, seen_urls): link 
+                    for link in all_links
+                }
+
+                # Process results as they complete
+                for future in as_completed(future_to_link):
+                    result = future.result()
+                    if result and result['url'] not in seen_urls:
+                        articles.append(result)
+                        seen_urls.add(result['url'])
+        else:
+            # Process sequentially for small numbers of links
+            for link in all_links:
+                result = process_link(link, source_url, ai_regex, cutoff_time, seen_urls)
+                if result and result['url'] not in seen_urls:
+                    articles.append(result)
+                    seen_urls.add(result['url'])
+
+        logger.info(f"Found {len(articles)} articles from {source_url}")
+        source_status['processed'] = True
+        source_status['article_count'] = len(articles)
+        logger.info(f"Successfully processed {source_url}: found {len(articles)} articles")
+        return articles
+
+    except Exception as e:
+        error_msg = f"Error finding AI articles from {source_url}: {str(e)}"
+        logger.error(error_msg)
+        source_status['error'] = error_msg
+        source_status['processed'] = True
+        return []
+
+def process_batch(sources, cutoff_time, db, seen_urls, status_placeholder):
+    """Process a batch of sources with parallel article handling and caching"""
+    from concurrent.futures import ThreadPoolExecutor
+    batch_articles = []
+    
+    try:
+        for source_url in sources:
+            # Find articles for this source
+            articles = find_ai_articles(source_url, cutoff_time)
+            if articles:
+                logger.info(f"Found {len(articles)} articles from {source_url}")
+                batch_articles.extend(articles)
+                
+                # Update seen URLs to avoid duplicates
+                for article in articles:
+                    seen_urls.add(article['url'])
+                    
+        logger.info(f"Total articles in batch: {len(batch_articles)}")
+        return batch_articles
+            
+    except Exception as e:
+        logger.error(f"Error in process_batch: {str(e)}")
+        # Return any articles we found before the error
+        return batch_articles
+      ]]></content>
+    </file>
+
+    <file path="utils/ai_analyzer.py">
+      <content><![CDATA[
+
+import os
+import json
+import logging
+import functools
+import hashlib
+import re
+import time
+from typing import Any, Dict, List, Optional
+
+from openai import OpenAI
+from utils import config_manager
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+
+# Lazily initialized OpenAI client
+_client = None
+
+def _get_client():
+    global _client
+    if _client is None:
+        _client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+    return _client
+
+# Simple in-memory cache for API responses
+_cache = {}
+
+# Cached rubric and file modification timestamp
+_cached_rubric: Optional[str] = None
+_cached_rubric_mtime: float = 0.0
+
+def _get_takeaway_rubric() -> str:
+    """Retrieve the current takeaway rubric using a cached config value."""
+    global _cached_rubric, _cached_rubric_mtime
+
+    try:
+        mtime = os.path.getmtime(config_manager.CONFIG_PATH)
+    except OSError:
+        mtime = 0.0
+
+    if _cached_rubric is None or mtime != _cached_rubric_mtime:
+        cfg = config_manager.load_config()
+        _cached_rubric = cfg.get(
+            "takeaway_rubric",
+            config_manager.DEFAULT_CONFIG["takeaway_rubric"],
+        )
+        _cached_rubric_mtime = mtime
+
+    return _cached_rubric
+
+def _validate_takeaway(takeaway: str) -> Dict[str, Any]:
+    """Validate takeaway against rubric and provide refinement instructions."""
+    try:
+        validation_prompt = f"""
+        Evaluate this takeaway against the rubric and provide specific refinement instructions:
+
+        RUBRIC:
+        {_get_takeaway_rubric()}
+
+        TAKEAWAY TO EVALUATE:
+        "{takeaway}"
+
+        Respond with JSON in this format:
+        {{
+            "passes_validation": true/false,
+            "word_count": actual_word_count,
+            "issues_found": ["issue1", "issue2"],
+            "refinement_instructions": "Specific instructions for fixing the takeaway"
+        }}
+        """
+
+        response = _get_client().chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are a validation system that checks takeaways against rubrics and provides refinement instructions."},
+                {"role": "user", "content": validation_prompt}
+            ],
+            max_completion_tokens=1000,
+            response_format={"type": "json_object"},
+            timeout=20
+        )
+
+        if response and response.choices and response.choices[0].message.content:
+            return json.loads(response.choices[0].message.content)
+        
+        return {"passes_validation": True, "issues_found": [], "refinement_instructions": ""}
+
+    except Exception as e:
+        logger.error(f"Error validating takeaway: {str(e)}")
+        return {"passes_validation": True, "issues_found": [], "refinement_instructions": ""}
+
+def _refine_takeaway(original_takeaway: str, refinement_instructions: str, original_content: str) -> str:
+    """Refine takeaway based on validation feedback."""
+    try:
+        refinement_prompt = f"""
+        Improve this takeaway based on the specific refinement instructions:
+
+        ORIGINAL TAKEAWAY:
+        "{original_takeaway}"
+
+        REFINEMENT INSTRUCTIONS:
+        {refinement_instructions}
+
+        RUBRIC TO FOLLOW:
+        {_get_takeaway_rubric()}
+
+        ORIGINAL CONTENT (for reference):
+        {original_content[:5000]}...
+
+        Respond with JSON: {{"takeaway": "improved takeaway here"}}
+        """
+
+        response = _get_client().chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an expert at refining business takeaways according to specific instructions and rubrics."},
+                {"role": "user", "content": refinement_prompt}
+            ],
+            max_completion_tokens=1500,
+            response_format={"type": "json_object"},
+            timeout=25
+        )
+
+        if response and response.choices and response.choices[0].message.content:
+            result = json.loads(response.choices[0].message.content)
+            return result.get("takeaway", original_takeaway)
+        
+        return original_takeaway
+
+    except Exception as e:
+        logger.error(f"Error refining takeaway: {str(e)}")
+        return original_takeaway
+
+def cache_result(func):
+    """Cache decorator for expensive API calls"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        # Create a cache key based on function name and arguments
+        cache_key = f"{func.__name__}:{hashlib.md5(str(args).encode()).hexdigest()}"
+        
+        # If result exists in cache and is less than 6 hours old, return it
+        if cache_key in _cache:
+            timestamp, result = _cache[cache_key]
+            if time.time() - timestamp < 21600:  # 6 hours
+                logger.info(f"Using cached result for {func.__name__}")
+                return result
+        
+        # Otherwise, call the function and cache the result
+        result = func(*args, **kwargs)
+        _cache[cache_key] = (time.time(), result)
+        return result
+    
+    return wrapper
+
+def split_into_chunks(content: str, max_chunk_size: int = 40000) -> List[str]:
+    """Split content into smaller chunks to avoid processing issues."""
+    # Clean and normalize content - more efficient regex
+    content = re.sub(r'\s+', ' ', content.strip())
+
+    # Quick return for small content
+    if len(content) < max_chunk_size * 3:  # ~3 chars per token
+        return [content]
+
+    # Improved sentence splitting with better boundary handling
+    sentences = re.split(r'(?<=[.!?])\s+', content)
+    chunks = []
+    current_chunk = []
+    current_size = 0
+    char_per_token = 3  
+    max_chunk_chars = max_chunk_size * char_per_token
+
+    for sentence in sentences:
+        sentence_chars = len(sentence)
+
+        # Handle very long sentences more efficiently
+        if sentence_chars > max_chunk_chars:
+            logger.warning(f"Very long sentence ({sentence_chars} chars) will be truncated")
+            # Append existing chunk if any
+            if current_chunk:
+                chunks.append(' '.join(current_chunk))
+                current_chunk = []
+                current_size = 0
+            
+            # Create chunks from the long sentence
+            for i in range(0, len(sentence), max_chunk_chars):
+                chunks.append(sentence[i:i+max_chunk_chars])
+            continue
+
+        # Start a new chunk if the current one would exceed the limit
+        if current_size + sentence_chars > max_chunk_chars:
+            chunks.append(' '.join(current_chunk))
+            current_chunk = [sentence]
+            current_size = sentence_chars
+        else:
+            current_chunk.append(sentence)
+            current_size += sentence_chars
+
+    # Don't forget the last chunk
+    if current_chunk:
+        chunks.append(' '.join(current_chunk))
+
+    logger.info(f"Split content into {len(chunks)} chunks (max size: {max_chunk_size} tokens)")
+    return chunks
+
+@cache_result
+def _process_chunk(chunk: str) -> Optional[Dict[str, Any]]:
+    """Process a single chunk of content with caching to avoid redundant API calls."""
+    try:
+        # Limit chunk size to avoid excessive token usage
+        if len(chunk) > 150000:
+            logger.warning(f"Chunk too large ({len(chunk)} chars), truncating...")
+            chunk = chunk[:150000] + "..."
+
+        prompt = (
+            "Analyze this text and create a business-focused takeaway following these STRICT RULES:\n\n"
+            + _get_takeaway_rubric() +
+            "\n\nRespond with valid JSON only: {\"takeaway\": \"Your concise takeaway here\"}\n"
+            "Ensure your JSON has properly closed quotes and braces.\n\n"
+            + chunk
+        )
+
+        try:
+            # Use an explicit model with timeout and retry mechanism
+            response = _get_client().chat.completions.create(
+                model="gpt-4o",  # Using gpt-4o for better balance of speed and quality
+                messages=[
+                    {"role": "system", "content": "You are a JSON generator. You must return ONLY valid, complete JSON in format {\"takeaway\": \"text\"}. Ensure all quotes are properly escaped and closed."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_completion_tokens=2000,
+                response_format={"type": "json_object"},
+                timeout=30
+            )
+        except Exception as api_error:
+            logger.error(f"API error during processing: {str(api_error)}")
+            # Return placeholder on API error to avoid cascading failures
+            return {"takeaway": "Unable to process content due to API limitations."}
+
+        if not response or not response.choices or not response.choices[0].message:
+            logger.warning("Empty response received from API")
+            return {"takeaway": "Error: Empty response from AI"}
+            
+        content = response.choices[0].message.content
+        if content:
+            content = content.strip()
+            try:
+                result = json.loads(content)
+                takeaway = result.get("takeaway", "")
+                
+                # Validate the takeaway and refine if needed
+                if takeaway:
+                    validation = _validate_takeaway(takeaway)
+                    
+                    # If validation fails, attempt refinement
+                    if not validation.get("passes_validation", True):
+                        refinement_instructions = validation.get("refinement_instructions", "")
+                        if refinement_instructions:
+                            logger.info(f"Takeaway validation failed, attempting refinement: {validation.get('issues_found', [])}")
+                            refined_takeaway = _refine_takeaway(takeaway, refinement_instructions, chunk)
+                            result["takeaway"] = refined_takeaway
+                            
+                            # Log the refinement
+                            logger.info(f"Takeaway refined from {validation.get('word_count', 0)} words")
+                
+                return result
+            except json.JSONDecodeError as json_err:
+                logger.warning(f"JSON decode error: {json_err} - Content: {content[:100]}...")
+                
+                # Progressive fallback for malformed JSON
+                # First try a more precise pattern for quoted takeaway
+                takeaway_match = re.search(r'"takeaway"\s*:\s*"((?:[^"\\]|\\.)*)(?:"|\Z)', content)
+                if takeaway_match:
+                    return {"takeaway": takeaway_match.group(1)}
+                    
+                # Try an alternate pattern that just gets everything between the quotes
+                takeaway_match = re.search(r'"takeaway"\s*:\s*"([^"]*)', content)
+                if takeaway_match:
+                    return {"takeaway": takeaway_match.group(1)}
+                    
+                # As a last resort, just try to extract any text after the takeaway key
+                takeaway_match = re.search(r'"takeaway"\s*:\s*["\']?([^"}\']+)', content)
+                if takeaway_match:
+                    return {"takeaway": takeaway_match.group(1)}
+                    
+        return {"takeaway": "Error extracting content."}
+
+    except Exception as e:
+        logger.error(f"Error processing chunk: {str(e)}")
+        return {
+            "takeaway": "Error occurred during content processing."
+        }
+
+@cache_result
+def _combine_summaries(summaries: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Combine chunk summaries with improved error handling and caching."""
+    # Define combined_text at function scope to avoid unbound errors
+    combined_text = ""
+    
+    # Quick returns for edge cases
+    if not summaries:
+        return {"takeaway": "No content available to summarize."}
+
+    if len(summaries) == 1:
+        return summaries[0]
+
+    try:
+        # Process the summaries into combined text - more efficiently
+        valid_takeaways = [s.get("takeaway", "") for s in summaries if s and "takeaway" in s]
+        if valid_takeaways:
+            combined_text = " ".join(valid_takeaways)
+        
+        if not combined_text or len(combined_text) < 10:  # Ensure we have meaningful content
+            return {"takeaway": "Unable to extract meaningful content from the articles."}
+
+        prompt = (
+            "Combine these takeaways into a single business-focused takeaway following these STRICT RULES:\n\n"
+            + _get_takeaway_rubric() +
+            "\n\nRespond in JSON format: {\"takeaway\": \"combined takeaway\"}\n\n"
+            f"Takeaways to combine: {combined_text[:50000]}"
+        )
+
+        try:
+            # Use an explicit model with better error handling
+            response = _get_client().chat.completions.create(
+                model="gpt-4o",  # Using gpt-4o for balance of speed and quality
+                messages=[
+                    {"role": "system", "content": "You are a JSON generator. You must return ONLY valid, complete JSON in format {\"takeaway\": \"text\"}. Ensure all quotes are properly escaped and closed."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_completion_tokens=2000,
+                response_format={"type": "json_object"},
+                timeout=30
+            )
+        except Exception as api_error:
+            logger.error(f"API error during summary combination: {str(api_error)}")
+            # Return the first summary as fallback on API error
+            if summaries and "takeaway" in summaries[0]:
+                return summaries[0]
+            return {"takeaway": "Unable to combine summaries due to API limitations."}
+
+        if not response or not response.choices or not response.choices[0].message:
+            logger.warning("Empty response received from API during combination")
+            return {"takeaway": "Error: Empty response from AI"}
+            
+        content = response.choices[0].message.content
+        if content:
+            content = content.strip()
+            try:
+                result = json.loads(content)
+                takeaway = result.get("takeaway", "")
+                
+                # Validate the combined takeaway and refine if needed
+                if takeaway:
+                    validation = _validate_takeaway(takeaway)
+                    
+                    # If validation fails, attempt refinement
+                    if not validation.get("passes_validation", True):
+                        refinement_instructions = validation.get("refinement_instructions", "")
+                        if refinement_instructions:
+                            logger.info(f"Combined takeaway validation failed, attempting refinement: {validation.get('issues_found', [])}")
+                            refined_takeaway = _refine_takeaway(takeaway, refinement_instructions, combined_text)
+                            result["takeaway"] = refined_takeaway
+                            
+                            # Log the refinement
+                            logger.info(f"Combined takeaway refined from {validation.get('word_count', 0)} words")
+                
+                return result
+            except json.JSONDecodeError as json_err:
+                logger.warning(f"JSON decode error in combine: {json_err} - Content: {content[:100]}...")
+                
+                # Progressive fallback with better patterns
+                # First try a more precise pattern for quoted takeaway
+                takeaway_match = re.search(r'"takeaway"\s*:\s*"((?:[^"\\]|\\.)*)(?:"|\Z)', content)
+                if takeaway_match:
+                    return {"takeaway": takeaway_match.group(1)}
+                    
+                # Try an alternate pattern that just gets everything between the quotes
+                takeaway_match = re.search(r'"takeaway"\s*:\s*"([^"]*)', content)
+                if takeaway_match:
+                    return {"takeaway": takeaway_match.group(1)}
+                    
+                # As a last resort, just try to extract any text after the takeaway key
+                takeaway_match = re.search(r'"takeaway"\s*:\s*["\']?([^"}\']+)', content)
+                if takeaway_match:
+                    return {"takeaway": takeaway_match.group(1)}
+        
+        # If we get here, use the combined text as fallback (combined_text is always initialized above)
+        return {"takeaway": combined_text[:2000] if combined_text else "Error processing content"}
+
+    except Exception as e:
+        logger.error(f"Error combining summaries: {str(e)}")
+        # Return a meaningful fallback even in case of errors
+        if summaries and len(summaries) > 0 and "takeaway" in summaries[0]:
+            return summaries[0]  # Return the first summary if available
+        return {"takeaway": "Error processing content"}
+
+def summarize_article(content: str) -> Dict[str, Any]:
+    """Generate a takeaway for an article with improved efficiency and error handling."""
+    try:
+        # Quick validation of content
+        if not content or len(content) < 100:
+            return {
+                "takeaway": "Article content is too short or empty."
+            }
+
+        # Normalize content to improve processing
+        content = re.sub(r'\s+', ' ', content.strip())
+        
+        # Generate a unique identifier for the article content for caching
+        content_hash = hashlib.md5(content[:10000].encode()).hexdigest()
+        cache_key = f"article_summary:{content_hash}"
+        
+        # Check if we already have this article cached
+        if cache_key in _cache:
+            timestamp, result = _cache[cache_key]
+            # Use cache if less than 24 hours old
+            if time.time() - timestamp < 86400:  # 24 hours in seconds
+                logger.info(f"Using cached article summary")
+                return result
+        
+        # Split content into manageable chunks
+        chunks = split_into_chunks(content, max_chunk_size=40000)
+
+        if not chunks:
+            return {
+                "takeaway": "Unable to process content."
+            }
+
+        # Process chunks in parallel if there are multiple chunks
+        chunk_summaries = []
+        for i, chunk in enumerate(chunks):
+            chunk_tokens = len(chunk) // 3
+            logger.info(f"Processing chunk {i+1}/{len(chunks)} (~{chunk_tokens} tokens)")
+
+            if chunk_tokens > 40000:
+                logger.warning(f"Chunk {i+1} too large ({chunk_tokens} tokens), truncating")
+                truncated_chunk = chunk[:120000]
+                summary = _process_chunk(truncated_chunk)
+            else:
+                summary = _process_chunk(chunk)
+
+            if summary:
+                chunk_summaries.append(summary)
+
+        if not chunk_summaries:
+            return {
+                "takeaway": "Content could not be processed properly."
+            }
+
+        # Combine summaries - already uses caching via the decorator
+        combined = _combine_summaries(chunk_summaries)
+        result = combined if combined else {
+            "takeaway": "Error combining article summaries."
+        }
+        
+        # Cache the final result
+        _cache[cache_key] = (time.time(), result)
+        
+        return result
+
+    except Exception as e:
+        logger.error(f"Error summarizing article: {str(e)}")
+        return {
+            "takeaway": "Unable to analyze content at this time."
+        }
+      ]]></content>
+    </file>
+
+    <file path="utils/config_manager.py">
+      <content><![CDATA[
+import json
+import os
+
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.json")
+DEFAULT_CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.default.json")
+
+DEFAULT_CONFIG = {
+    "evaluation": {
+        "companies": [
+            "Amazon", "Google", "Microsoft", "OpenAI", "Walmart", "eBay",
+            "Target", "Meta", "Apple", "Adobe", "Salesforce", "Nvidia",
+            "Anthropic", "Perplexity", "Crocs"
+        ],
+        "tools": [
+            "ChatGPT", "Gemini", "Claude", "SageMaker", "Copilot", "DALL-E",
+            "Bard", "Midjourney", "Stable Diffusion", "Firefly", "GPT-4",
+            "Llama", "Bedrock", "Grok"
+        ],
+        "retail_terms": [
+            "ecommerce", "retail", "shopping", "marketplace", "consumer",
+            "personalization", "recommendation", "supply chain", "inventory",
+            "merchandising", "sales", "customer experience", "revenue"
+        ],
+        "roi_pattern": "\\d+%|\\$\\d+|\\d+\\s*million|\\d+\\s*billion|increased|reduced|improved|saved",
+        "promotional_pattern": "partner|partnership|sponsor|press release|proud|excited|pleased to|delighted to",
+        "deployment_terms": ["deployed", "implemented", "launched", "in production", "currently using", "rolled out"],
+        "major_platforms": ["openai", "microsoft", "google", "amazon", "meta"]
+    },
+    "takeaway_rubric": (
+        "1. Write a 3-4 sentence focused takeaway (70-90 words)\n"
+        "2. Include specific company names mentioned in the article\n"
+        "3. Include quantitative data when available (revenue, user counts, percentages)\n"
+        "4. Only use statistics from the source text - never fabricate numbers\n"
+        "5. Highlight business impacts and strategic benefits of the AI technology\n"
+        "6. Use clear language without technical jargon"
+    )
+}
+
+
+def archive_default_config():
+    """Archive the original default configuration for reset purposes."""
+    if not os.path.exists(DEFAULT_CONFIG_PATH):
+        with open(DEFAULT_CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(DEFAULT_CONFIG, f, indent=2)
+
+
+def load_config():
+    """Load configuration from disk or return defaults."""
+    archive_default_config()
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return DEFAULT_CONFIG.copy()
+
+
+def save_config(config: dict):
+    """Save configuration to disk."""
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2)
+
+
+def reset_config() -> dict:
+    """Restore configuration from archived defaults and return it."""
+    if os.path.exists(DEFAULT_CONFIG_PATH):
+        with open(DEFAULT_CONFIG_PATH, "r", encoding="utf-8") as f:
+            defaults = json.load(f)
+    else:
+        defaults = DEFAULT_CONFIG.copy()
+    save_config(defaults)
+    return defaults
+      ]]></content>
+    </file>
+
+  </category>
+
+  <!-- CONFIGURATION FILES -->
+  <category name="Configuration Files">
+    
+    <file path="pyproject.toml">
+      <content><![CDATA[
+[project]
+name = "repl-nix-workspace"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.12.3",
+    "docx2txt>=0.8",
+    "llama-index-core>=0.12.12",
+    "llama-index>=0.12.12",
+    "openai>=1.60.0",
+    "pypdf>=5.1.0",
+    "pyyaml>=6.0.2",
+    "reportlab>=4.2.5",
+    "requests>=2.32.3",
+    "serpapi>=0.1.5",
+    "streamlit>=1.41.1",
+    "trafilatura>=2.0.0",
+    "llama-index-readers-web>=0.3.5",
+    "llama-index-embeddings-openai>=0.3.1",
+    "pandas>=2.2.3",
+    "pytz>=2024.2",
+    "psutil>=6.1.1",
+    "twilio>=9.4.5",
+    "openpyxl>=3.1.5",
+]
+      ]]></content>
+    </file>
+
+    <file path="requirements.txt">
+      <content><![CDATA[
+# Required packages for Codex Crawler
+beautifulsoup4>=4.12.3
+docx2txt>=0.8
+llama-index-core>=0.12.12
+llama-index>=0.12.12
+llama-index-readers-web>=0.3.5
+llama-index-embeddings-openai>=0.3.1
+openai>=1.60.0
+pandas>=2.2.3
+psutil>=6.1.1
+pypdf>=5.1.0
+pytz>=2024.2
+pyyaml>=6.0.2
+reportlab>=4.2.5
+requests>=2.32.3
+serpapi>=0.1.5
+streamlit>=1.41.1
+trafilatura>=2.0.0
+twilio>=9.4.5
+openpyxl>=3.1.5
+streamlit>=1.31.0
+      ]]></content>
+    </file>
+
+    <file path=".replit">
+      <content><![CDATA[
+modules = ["python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+packages = ["freetype", "glibcLocales", "libyaml"]
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["sh", "-c", "streamlit run main.py"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Streamlit Server"
+
+[[workflows.workflow]]
+name = "Streamlit Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "streamlit run main.py"
+waitForPort = 5000
+
+[[workflows.workflow]]
+name = "View System Flow"
+author = 33159889
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python -m http.server 5000"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+      ]]></content>
+    </file>
+
+  </category>
+
+  <!-- ADDITIONAL AGENT FILES -->
+  <category name="Additional Agent Files">
+    
+    <file path="agents/report_agent.py">
+      <content><![CDATA[
+from agents.base_agent import BaseAgent
+from typing import List, Dict, Optional
+import pandas as pd
+from datetime import datetime
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from urllib.parse import unquote
+from openpyxl.utils import get_column_letter
+
+class ReportAgent(BaseAgent):
+    """
+    Agent responsible for generating reports from analyzed articles
+    and selecting the most relevant articles
+    """
+    
+    def __init__(self, config=None):
+        """Initialize the report agent with configuration"""
+        super().__init__(config)
+        self.max_articles = config.get('max_report_articles', 10) if config else 10
+        self.log_event("Report agent initialized")
+    
+    def process(self, input_data):
+        """Process and rank articles, then generate reports"""
+        if not input_data or not isinstance(input_data, list):
+            self.log_event("No articles provided for reporting", "warning")
+            return {
+                "selected_articles": [],
+                "pdf_report": None,
+                "csv_report": None,
+                "excel_report": None
+            }
+            
+        articles = input_data
+        self.log_event(f"Processing {len(articles)} articles for reporting")
+        
+        # Select and rank the best articles
+        selected_articles = self.select_articles(articles)
+        self.log_event(f"Selected {len(selected_articles)} articles for reports")
+        
+        # Generate reports in different formats
+        try:
+            pdf_data = self.generate_pdf_report(selected_articles)
+            csv_data = self.generate_csv_report(selected_articles)
+            excel_data = self.generate_excel_report(selected_articles)
+            
+            return {
+                "selected_articles": selected_articles,
+                "pdf_report": pdf_data,
+                "csv_report": csv_data,
+                "excel_report": excel_data
+            }
+            
+        except Exception as e:
+            self.log_event(f"Error generating reports: {str(e)}", "error")
+            return {
+                "selected_articles": selected_articles,
+                "pdf_report": None,
+                "csv_report": None,
+                "excel_report": None
+            }
+    
+    def select_articles(self, articles: List[Dict]) -> List[Dict]:
+        """Select and rank the best articles based on assessment scores"""
+        try:
+            # Sort articles by assessment and score
+            sorted_articles = sorted(
+                articles,
+                key=lambda x: (
+                    {"INCLUDE": 3, "OK": 2, "CUT": 1}.get(x.get('assessment', 'CUT'), 0),
+                    x.get('assessment_score', 0)
+                ),
+                reverse=True
+            )
+            
+            # Limit to max articles
+            selected = sorted_articles[:self.max_articles]
+            self.log_event(f"Selected top {len(selected)} articles from {len(articles)} total")
+            
+            return selected
+            
+        except Exception as e:
+            self.log_event(f"Error selecting articles: {str(e)}", "error")
+            return articles[:self.max_articles]  # Fallback to first N articles
+    
+    def generate_pdf_report(self, articles: List[Dict]) -> Optional[bytes]:
+        """Generate a PDF report for the selected articles"""
+        if not articles:
+            return None
+            
+        try:
+            buffer = BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=letter)
+            styles = getSampleStyleSheet()
+            
+            title_style = styles['Heading1']
+            subtitle_style = styles['Heading2']
+            normal_style = styles['Normal']
+            takeaway_style = ParagraphStyle(
+                'TakeawayStyle',
+                parent=normal_style,
+                leftIndent=20,
+                rightIndent=20,
+                spaceAfter=12,
+                spaceBefore=12,
+                borderWidth=1,
+                borderColor=colors.lightgrey,
+                borderPadding=10,
+                borderRadius=5,
+                backColor=colors.lightgrey,
+            )
+            
+            content = []
+            today = datetime.now().strftime("%Y-%m-%d")
+            content.append(Paragraph(f"AI News Report - {today}", title_style))
+            content.append(Spacer(1, 12))
+            content.append(Paragraph(f"Top {len(articles)} AI Articles", subtitle_style))
+            content.append(Spacer(1, 24))
+            
+            for i, article in enumerate(articles, 1):
+                title = article.get('title', 'Untitled')
+                url = article.get('url', '')
+                takeaway = article.get('takeaway', 'No takeaway available')
+                assessment = article.get('assessment', 'N/A')
+                score = article.get('assessment_score', 0)
+                date = article.get('date', '')
+                
+                # Article header
+                content.append(Paragraph(f"{i}. <a href='{url}'>{title}</a>", subtitle_style))
+                content.append(Spacer(1, 6))
+                
+                # Date and assessment
+                content.append(Paragraph(f"Published: {date} | Assessment: {assessment} ({score}%)", normal_style))
+                content.append(Spacer(1, 6))
+                
+                # Takeaway
+                content.append(Paragraph("Key Takeaway:", normal_style))
+                content.append(Paragraph(takeaway, takeaway_style))
+                
+                # Add space between articles
+                content.append(Spacer(1, 20))
+            
+            # Build the PDF
+            doc.build(content)
+            pdf_data = buffer.getvalue()
+            buffer.close()
+            
+            return pdf_data
+            
+        except Exception as e:
+            self.log_event(f"Error generating PDF: {str(e)}", "error")
+            return None
+    
+    def generate_csv_report(self, articles: List[Dict]) -> Optional[bytes]:
+        """Generate a CSV report for the selected articles"""
+        if not articles:
+            return None
+            
+        try:
+            # Prepare data for CSV
+            data = []
+            for article in articles:
+                # Extract key_points as string if it exists
+                key_points = article.get('key_points', [])
+                key_points_str = "; ".join(key_points) if key_points else ""
+                
+                row = {
+                    'Title': article.get('title', ''),
+                    'URL': article.get('url', ''),
+                    'Date': article.get('date', ''),
+                    'Source': article.get('source', ''),
+                    'Takeaway': article.get('takeaway', ''),
+                    'Assessment': article.get('assessment', ''),
+                    'Score': article.get('assessment_score', 0),
+                    'Key Points': key_points_str,
+                }
+                for idx, crit in enumerate(article.get('criteria_results', []), 1):
+                    row[f'C{idx}'] = 'Y' if crit.get('status') else 'N'
+                    row[f'C{idx} Notes'] = crit.get('notes', '')
+                data.append(row)
+                
+            # Create DataFrame and CSV
+            df = pd.DataFrame(data)
+            csv_buffer = BytesIO()
+            df.to_csv(csv_buffer, index=False, encoding='utf-8')
+            
+            return csv_buffer.getvalue()
+            
+        except Exception as e:
+            self.log_event(f"Error generating CSV: {str(e)}", "error")
+            return None
+    
+    def generate_excel_report(self, articles: List[Dict]) -> Optional[bytes]:
+        """Generate an Excel report for the selected articles"""
+        if not articles:
+            return None
+            
+        try:
+            # Prepare data for Excel
+            data = []
+            for article in articles:
+                # Extract key_points as string if it exists
+                key_points = article.get('key_points', [])
+                key_points_str = "; ".join(key_points) if key_points else ""
+                
+                # Clean URL for display
+                url = article.get('url', '')
+                if 'file:///' in url:
+                    url = url.split('https://')[-1]
+                    url = f'https://{url}'
+                url = unquote(url)
+                
+                row = {
+                    'Title': article.get('title', ''),
+                    'URL': url,
+                    'Date': article.get('date', ''),
+                    'Source': article.get('source', ''),
+                    'Takeaway': article.get('takeaway', ''),
+                    'Assessment': article.get('assessment', ''),
+                    'Score': article.get('assessment_score', 0),
+                    'Key Points': key_points_str,
+                }
+                for idx, crit in enumerate(article.get('criteria_results', []), 1):
+                    row[f'C{idx}'] = 'Y' if crit.get('status') else 'N'
+                    row[f'C{idx} Notes'] = crit.get('notes', '')
+                data.append(row)
+                
+            # Create DataFrame and Excel
+            df = pd.DataFrame(data)
+            excel_buffer = BytesIO()
+            df.to_excel(excel_buffer, index=False, engine='openpyxl')
+            
+            return excel_buffer.getvalue()
+            
+        except Exception as e:
+            self.log_event(f"Error generating Excel: {str(e)}", "error")
+            return None
+      ]]></content>
+    </file>
+
+  </category>
+
+  <!-- UI & INTERFACE FILES -->
+  <category name="UI & Interface Files">
+    
+    <file path="utils/simple_particles.py">
+      <content><![CDATA[
+import streamlit as st
+
+def add_simple_particles():
+    """Add a simple animated particle background to the Streamlit app."""
+    
+    particle_css = """
+    <style>
+    .particle-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: -1;
+        overflow: hidden;
+    }
+    
+    .particle {
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        background: rgba(100, 200, 255, 0.3);
+        border-radius: 50%;
+        animation: float 15s infinite ease-in-out;
+    }
+    
+    .particle:nth-child(1) {
+        left: 10%;
+        animation-delay: 0s;
+        animation-duration: 12s;
+    }
+    
+    .particle:nth-child(2) {
+        left: 20%;
+        animation-delay: 2s;
+        animation-duration: 14s;
+    }
+    
+    .particle:nth-child(3) {
+        left: 30%;
+        animation-delay: 4s;
+        animation-duration: 16s;
+    }
+    
+    .particle:nth-child(4) {
+        left: 40%;
+        animation-delay: 6s;
+        animation-duration: 18s;
+    }
+    
+    .particle:nth-child(5) {
+        left: 50%;
+        animation-delay: 8s;
+        animation-duration: 20s;
+    }
+    
+    .particle:nth-child(6) {
+        left: 60%;
+        animation-delay: 10s;
+        animation-duration: 22s;
+    }
+    
+    .particle:nth-child(7) {
+        left: 70%;
+        animation-delay: 12s;
+        animation-duration: 24s;
+    }
+    
+    .particle:nth-child(8) {
+        left: 80%;
+        animation-delay: 14s;
+        animation-duration: 26s;
+    }
+    
+    .particle:nth-child(9) {
+        left: 90%;
+        animation-delay: 16s;
+        animation-duration: 28s;
+    }
+    
+    @keyframes float {
+        0% {
+            transform: translateY(100vh) rotate(0deg);
+            opacity: 0;
+        }
+        10% {
+            opacity: 1;
+        }
+        90% {
+            opacity: 1;
+        }
+        100% {
+            transform: translateY(-100vh) rotate(360deg);
+            opacity: 0;
+        }
+    }
+    
+    /* Dark theme compatibility */
+    @media (prefers-color-scheme: dark) {
+        .particle {
+            background: rgba(150, 200, 255, 0.2);
+        }
+    }
+    </style>
+    
+    <div class="particle-container">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+    """
+    
+    st.markdown(particle_css, unsafe_allow_html=True)
+      ]]></content>
+    </file>
+
+  </category>
+
+</project>
+]]></content>
