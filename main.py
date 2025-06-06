@@ -10,6 +10,7 @@ from utils.report_tools import (
     sort_by_assessment_and_score,
 )
 from utils.simple_particles import add_simple_particles
+from utils.common import calculate_lookback_days
 from agents.evaluation_agent import EvaluationAgent
 import pandas as pd
 import json
@@ -49,6 +50,9 @@ if 'initialized' not in st.session_state:
         st.session_state.show_settings = True  # Show settings panel on first load
         st.session_state.time_value = 1  # Default time period value
         st.session_state.time_unit = "Weeks"  # Default time period unit
+        st.session_state.lookback_days = calculate_lookback_days(
+            st.session_state.time_value, st.session_state.time_unit
+        )
         st.session_state.initialized = True
         st.session_state.last_update = datetime.now()
         st.session_state.scan_complete = False  # Flag to track if a scan has completed
@@ -337,11 +341,8 @@ def main():
                     end_idx = min(start_idx + batch_size, len(sources))
                     current_batch = sources[start_idx:end_idx]
 
-                    # Calculate cutoff time based on selected unit - looking BACK in time
-                    if st.session_state.time_unit == "Weeks":
-                        days_to_subtract = st.session_state.time_value * 7
-                    else:  # Days
-                        days_to_subtract = st.session_state.time_value
+                    # Calculate cutoff time using unified lookback days
+                    days_to_subtract = st.session_state.lookback_days
 
                     # Create a cutoff_time in the past
                     cutoff_time = (
@@ -352,7 +353,7 @@ def main():
                     )
                     current_date = datetime.now().strftime('%Y-%m-%d')
                     logger.info(
-                        f"Today is: {current_date}, Time period: {st.session_state.time_value} {st.session_state.time_unit}, Cutoff: {cutoff_time} (Including articles from {(cutoff_time + timedelta(days=1)).strftime('%Y-%m-%d')} to {current_date})"
+                        f"Today is: {current_date}, Lookback: {st.session_state.lookback_days} days, Cutoff: {cutoff_time} (Including articles from {(cutoff_time + timedelta(days=1)).strftime('%Y-%m-%d')} to {current_date})"
                     )
 
                     # Process current batch

@@ -6,6 +6,7 @@ import logging
 from agents.orchestrator import Orchestrator
 from utils.simple_particles import add_simple_particles
 from utils.report_tools import sort_by_assessment_and_score
+from utils.common import calculate_lookback_days
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +29,9 @@ if 'initialized' not in st.session_state:
         st.session_state.show_settings = True  # Display settings modal on first load
         st.session_state.time_value = 1  # Default time period value
         st.session_state.time_unit = "Weeks"  # Default time period unit
+        st.session_state.lookback_days = calculate_lookback_days(
+            st.session_state.time_value, st.session_state.time_unit
+        )
         st.session_state.initialized = True
         st.session_state.last_update = datetime.now()
         st.session_state.scan_complete = False
@@ -165,8 +169,7 @@ def main():
                     # Run the orchestrated workflow
                     result = st.session_state.orchestrator.run_workflow(
                         sources,
-                        time_period=st.session_state.time_value,
-                        time_unit=st.session_state.time_unit
+                        lookback_days=st.session_state.lookback_days
                     )
                     
                     # Update UI with status messages
