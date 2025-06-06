@@ -33,6 +33,12 @@ def parse_date(date_str):
     except Exception:
         return None
 
+def calculate_lookback_days(value: int, unit: str) -> int:
+    """Convert a user supplied time value and unit into total days."""
+    if unit.lower().startswith("week"):
+        return value * 7
+    return value
+
 def validate_timeframe(date_str, cutoff_date):
     """
     Validates if a date is within the specified timeframe

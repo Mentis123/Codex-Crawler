@@ -1,4 +1,5 @@
 import streamlit as st
+from utils.common import calculate_lookback_days
 
 
 def _close_settings_param_check():
@@ -104,10 +105,11 @@ def render_settings_drawer():
 
             col1, col2 = st.columns([2, 2])
             with col1:
-                st.number_input(
+                st.session_state.time_value = st.number_input(
                     "Time Period",
                     min_value=1,
                     step=1,
+                    value=st.session_state.get("time_value", 1),
                     key="time_value",
                 )
             with col2:
@@ -117,7 +119,13 @@ def render_settings_drawer():
                     "Unit",
                     unit_options,
                     index=default_index,
+                    key="time_unit",
                 )
+
+            st.session_state.lookback_days = calculate_lookback_days(
+                st.session_state.time_value,
+                st.session_state.time_unit,
+            )
 
             fetch_button = st.button(
                 "Fetch New Articles",
