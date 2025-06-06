@@ -110,16 +110,13 @@ def render_settings_drawer():
                     "Time Period",
                     min_value=1,
                     step=1,
-                    value=st.session_state.get("time_value", 1),
                     key="time_value",
                 )
             with col2:
                 unit_options = ["Days", "Weeks"]
-                default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
                 st.selectbox(
                     "Unit",
                     unit_options,
-                    index=default_index,
                     key="time_unit",
                 )
 
@@ -149,24 +146,6 @@ def render_settings_drawer():
                 config_data = load_config()
                 eval_cfg = config_data.get("evaluation", {})
 
-                # URL Management section
-                st.subheader("URL Management")
-                full_default = "\n".join(config_data.get("full_scan_urls", []))
-                test_default = "\n".join(config_data.get("test_scan_urls", []))
-                
-                url_col1, url_col2 = st.columns(2)
-                with url_col1:
-                    full_text = st.text_area("Full Scan URLs", full_default, height=200, key="full_urls")
-                with url_col2:
-                    test_text = st.text_area("Test Scan URLs", test_default, height=200, key="test_urls")
-                
-                if st.button("Save URL Configuration", key="save_urls_btn"):
-                    config_data["full_scan_urls"] = [u.strip() for u in full_text.splitlines() if u.strip()]
-                    config_data["test_scan_urls"] = [u.strip() for u in test_text.splitlines() if u.strip()]
-                    save_config(config_data)
-                    st.success("URL configuration saved.")
-
-                st.divider()
                 st.subheader("Evaluation Criteria")
 
                 companies = st.text_area(
@@ -206,6 +185,25 @@ def render_settings_drawer():
                     save_config(config_data)
                     config_saved = True
                     st.success("Evaluation configuration saved.")
+
+                st.divider()
+                
+                # URL Management section at the bottom
+                st.subheader("URL Management")
+                full_default = "\n".join(config_data.get("full_scan_urls", []))
+                test_default = "\n".join(config_data.get("test_scan_urls", []))
+                
+                url_col1, url_col2 = st.columns(2)
+                with url_col1:
+                    full_text = st.text_area("Full Scan URLs", full_default, height=200, key="full_urls")
+                with url_col2:
+                    test_text = st.text_area("Test Scan URLs", test_default, height=200, key="test_urls")
+                
+                if st.button("Save URL Configuration", key="save_urls_btn"):
+                    config_data["full_scan_urls"] = [u.strip() for u in full_text.splitlines() if u.strip()]
+                    config_data["test_scan_urls"] = [u.strip() for u in test_text.splitlines() if u.strip()]
+                    save_config(config_data)
+                    st.success("URL configuration saved.")
 
             
             return fetch_button, config_saved
