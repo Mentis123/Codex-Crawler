@@ -13,7 +13,7 @@ import pytz
 class SearchAgent:
     def __init__(self, config):
         self.config = config
-        self.timeframe_days = config['search_timeframe_days']
+        self.timeframe_days = config.get('lookback_days', config.get('search_timeframe_days', 7))
         self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         self.model = "o3-mini"
         self.min_articles = 6
@@ -89,8 +89,7 @@ class SearchAgent:
         Aggregates articles from all configured sources with optimized validation flow
         """
         articles = []
-        days_to_subtract = self.timeframe_days * 7 if self.config.get('time_unit') == "Weeks" else self.timeframe_days
-        cutoff_time = datetime.now() - timedelta(days=days_to_subtract)
+        cutoff_time = datetime.now() - timedelta(days=self.timeframe_days)
 
         try:
             keywords = self.extract_keywords_from_criteria(criteria_text)[:self.max_keywords]

@@ -46,14 +46,13 @@ class Orchestrator:
         self.status_messages.insert(0, status_msg)
         logger.info(f"Status: {message}")
         
-    def run_workflow(self, source_urls, time_period=7, time_unit="Days"):
+    def run_workflow(self, source_urls, lookback_days=7):
         """
         Run the complete news aggregation workflow with all agents
         
         Args:
             source_urls: List of source URLs to search for articles
-            time_period: Number of time units to look back
-            time_unit: "Days" or "Weeks"
+            lookback_days: Number of days to look back
             
         Returns:
             Dict containing workflow results
@@ -65,13 +64,12 @@ class Orchestrator:
         
         try:
             # Calculate cutoff time
-            days_to_subtract = time_period * 7 if time_unit == "Weeks" else time_period
             cutoff_time = (
                 datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-                - timedelta(days=days_to_subtract)
+                - timedelta(days=lookback_days)
             )
             self.update_status(
-                f"Time period: {time_period} {time_unit}, Cutoff: {cutoff_time}"
+                f"Lookback: {lookback_days} days, Cutoff: {cutoff_time}"
             )
             
             # Step 1: Crawl sources for articles
