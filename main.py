@@ -503,8 +503,8 @@ def main():
                     takeaway_text = article.get('takeaway', 'No takeaway available')
                     takeaway_text = clean_takeaway(takeaway_text)
 
-                    # Display the takeaway with custom formatting
-                    st.subheader("Takeaway")
+                    # Display the takeaway with smaller font
+                    st.markdown("**Takeaway**")
 
                     # Custom CSS to ensure proper text wrapping
                     st.markdown("""
@@ -520,6 +520,7 @@ def main():
                         max-width: 100%;
                         overflow-wrap: break-word;
                         line-height: 1.5;
+                        font-size: 0.9em;
                     }
                     </style>
                     """, unsafe_allow_html=True)
