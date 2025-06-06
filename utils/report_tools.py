@@ -74,10 +74,12 @@ def generate_pdf_report(articles):
         source = article.get('source', 'Unknown source')
         content.append(Paragraph(f"Published: {date} | Source: {source}", normal_style))
 
-        content.append(Spacer(1, 6))
+        category = article.get('category', 'N/A')
+        content.append(Paragraph(f"<b>Use Case Category:</b> {category}", normal_style))
 
-        takeaway = article.get('takeaway', 'No takeaway available')
-        content.append(Paragraph(f"<b>Key Takeaway:</b> {takeaway}", takeaway_style))
+        assessment = article.get('assessment', 'N/A')
+        score = article.get('assessment_score', 0)
+        content.append(Paragraph(f"<b>Assessment:</b> {assessment} (Score: {score}%)", normal_style))
 
         content.append(Spacer(1, 6))
 
@@ -115,10 +117,6 @@ def generate_pdf_report(articles):
             content.append(table)
             content.append(Spacer(1, 6))
 
-        assessment = article.get('assessment', 'N/A')
-        score = article.get('assessment_score', 0)
-        content.append(Paragraph(f"<b>Assessment:</b> {assessment} (Score: {score}%)", normal_style))
-        category = article.get('category', 'N/A')
         justification = article.get('category_justification', 'N/A')
         content.append(Paragraph(f"<b>Use Case Category:</b> {category}", normal_style))
         content.append(Paragraph(f"<b>Use Case Category Justification:</b> {justification}", normal_style))
