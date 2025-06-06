@@ -240,6 +240,10 @@ class ReportAgent(BaseAgent):
                 assessment = article.get('assessment', 'N/A')
                 score = article.get('assessment_score', 0)
                 content.append(Paragraph(f"<b>Assessment:</b> {assessment} (Score: {score}%)", article_style))
+                category = article.get('category', 'N/A')
+                justification = article.get('category_justification', 'N/A')
+                content.append(Paragraph(f"<b>Use Case Category:</b> {category}", article_style))
+                content.append(Paragraph(f"<b>Use Case Justification:</b> {justification}", article_style))
 
                 # Add space between articles
                 content.append(Spacer(1, 20))
@@ -269,18 +273,13 @@ class ReportAgent(BaseAgent):
                 key_points_str = "; ".join(key_points) if key_points else ""
                 
                 row = {
-                    'Title': article.get('title', ''),
+                    'Use Case Category': article.get('category', 'N/A'),
                     'URL': article.get('url', ''),
-                    'Date': article.get('date', ''),
-                    'Source': article.get('source', ''),
+                    'Title': article.get('title', ''),
                     'Takeaway': article.get('takeaway', ''),
-                    'Assessment': article.get('assessment', ''),
-                    'Score': article.get('assessment_score', 0),
-                    'Key Points': key_points_str,
+                    'Date': article.get('date', ''),
+                    'Use Case Category Justification': article.get('category_justification', 'N/A'),
                 }
-                for idx, crit in enumerate(article.get('criteria_results', []), 1):
-                    row[f'C{idx}'] = 'Y' if crit.get('status') else 'N'
-                    row[f'C{idx} Notes'] = crit.get('notes', '')
                 data.append(row)
                 
             # Create DataFrame and CSV
@@ -308,18 +307,13 @@ class ReportAgent(BaseAgent):
                 key_points_str = "; ".join(key_points) if key_points else ""
                 
                 row = {
-                    'Title': article.get('title', ''),
+                    'Use Case Category': article.get('category', 'N/A'),
                     'URL': article.get('url', ''),
-                    'Date': article.get('date', ''),
-                    'Source': article.get('source', ''),
+                    'Title': article.get('title', ''),
                     'Takeaway': article.get('takeaway', ''),
-                    'Assessment': article.get('assessment', ''),
-                    'Score': article.get('assessment_score', 0),
-                    'Key Points': key_points_str,
+                    'Date': article.get('date', ''),
+                    'Use Case Category Justification': article.get('category_justification', 'N/A'),
                 }
-                for idx, crit in enumerate(article.get('criteria_results', []), 1):
-                    row[f'C{idx}'] = 'Y' if crit.get('status') else 'N'
-                    row[f'C{idx} Notes'] = crit.get('notes', '')
                 data.append(row)
                 
             # Create DataFrame and Excel

@@ -77,11 +77,6 @@ def generate_pdf_report(articles):
 
         takeaway = article.get('takeaway', 'No takeaway available')
         content.append(Paragraph(f"<b>Key Takeaway:</b> {takeaway}", takeaway_style))
-
-        category = article.get('category', 'N/A')
-        justification = article.get('category_justification', 'N/A')
-        content.append(Paragraph(f"<b>Category:</b> {category}", normal_style))
-        content.append(Paragraph(f"<b>Justification:</b> {justification}", normal_style))
         content.append(Spacer(1, 6))
 
         crit_results = article.get('criteria_results', [])
@@ -118,6 +113,10 @@ def generate_pdf_report(articles):
         assessment = article.get('assessment', 'N/A')
         score = article.get('assessment_score', 0)
         content.append(Paragraph(f"<b>Assessment:</b> {assessment} (Score: {score}%)", normal_style))
+        category = article.get('category', 'N/A')
+        justification = article.get('category_justification', 'N/A')
+        content.append(Paragraph(f"<b>Use Case Category:</b> {category}", normal_style))
+        content.append(Paragraph(f"<b>Use Case Justification:</b> {justification}", normal_style))
         content.append(Spacer(1, 20))
 
     doc.build(content)
@@ -142,19 +141,13 @@ def generate_csv_report(articles):
         url = unquote(url)
 
         row = {
-            'Title': article.get('title', ''),
+            'Use Case Category': article.get('category', 'N/A'),
             'URL': url,
-            'Date': article.get('date', ''),
-            'Source': article.get('source', ''),
+            'Title': article.get('title', ''),
             'Takeaway': article.get('takeaway', ''),
-            'Category': article.get('category', 'N/A'),
-            'Category Justification': article.get('category_justification', 'N/A'),
-            'Assessment': article.get('assessment', ''),
-            'Score': article.get('assessment_score', 0),
+            'Date': article.get('date', ''),
+            'Use Case Category Justification': article.get('category_justification', 'N/A'),
         }
-        for idx, crit in enumerate(article.get('criteria_results', []), 1):
-            row[f'C{idx}'] = 'Y' if crit.get('status') else 'N'
-            row[f'C{idx} Notes'] = crit.get('notes', '')
         data.append(row)
 
     df = pd.DataFrame(data)
@@ -178,19 +171,13 @@ def generate_excel_report(articles):
         url = unquote(url)
 
         row = {
-            'Title': article.get('title', ''),
+            'Use Case Category': article.get('category', 'N/A'),
             'URL': url,
-            'Date': article.get('date', ''),
-            'Source': article.get('source', ''),
+            'Title': article.get('title', ''),
             'Takeaway': article.get('takeaway', ''),
-            'Category': article.get('category', 'N/A'),
-            'Category Justification': article.get('category_justification', 'N/A'),
-            'Assessment': article.get('assessment', ''),
-            'Score': article.get('assessment_score', 0),
+            'Date': article.get('date', ''),
+            'Use Case Category Justification': article.get('category_justification', 'N/A'),
         }
-        for idx, crit in enumerate(article.get('criteria_results', []), 1):
-            row[f'C{idx}'] = 'Y' if crit.get('status') else 'N'
-            row[f'C{idx} Notes'] = crit.get('notes', '')
         data.append(row)
 
     df = pd.DataFrame(data)
