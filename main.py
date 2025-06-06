@@ -535,7 +535,7 @@ def main():
                     criteria = article.get('criteria_results', [])
                     with st.expander("Criteria Details", expanded=False):
                         render_criteria_dashboard(criteria)
-                    st.markdown(f"**Justification:** {category_justification}")
+                    st.markdown(f"**Category Justification:** {category_justification}")
         elif st.session_state.scan_complete and not st.session_state.current_articles:
             with results_section:
                 st.warning("No articles found. Please try adjusting the time period or check the source sites.")
