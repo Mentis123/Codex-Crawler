@@ -250,7 +250,7 @@ class ReportAgent(BaseAgent):
                 category = article.get('category', 'N/A')
                 justification = article.get('category_justification', 'N/A')
                 content.append(Paragraph(f"<b>Use Case Category:</b> {category}", article_style))
-                content.append(Paragraph(f"<b>Use Case Justification:</b> {justification}", article_style))
+                content.append(Paragraph(f"<b>Use Case Category Justification:</b> {justification}", article_style))
 
                 # Add space between articles
                 content.append(Spacer(1, 20))

@@ -118,7 +118,8 @@ def generate_pdf_report(articles):
             content.append(Spacer(1, 6))
 
         justification = article.get('category_justification', 'N/A')
-        content.append(Paragraph(f"<b>Use Case Justification:</b> {justification}", normal_style))
+        content.append(Paragraph(f"<b>Use Case Category:</b> {category}", normal_style))
+        content.append(Paragraph(f"<b>Use Case Category Justification:</b> {justification}", normal_style))
 
         content.append(Spacer(1, 20))
 
