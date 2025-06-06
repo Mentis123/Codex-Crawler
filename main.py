@@ -452,6 +452,13 @@ def main():
                     st.markdown("---")
                     st.markdown(f"### [{article['title']}]({article['url']})")
                     st.markdown(f"Published: {article['date']}")
+                    # Show category directly under the date
+                    category = article.get('category', 'N/A')
+                    category_justification = article.get(
+                        'category_justification',
+                        'No justification available.'
+                    )
+                    st.markdown(f"**Category:** {category}")
                     # Get and process the takeaway text
                     import re
 
@@ -519,13 +526,6 @@ def main():
 
                     st.markdown(f'<div class="takeaway-box">{takeaway_text}</div>', unsafe_allow_html=True)
 
-                    # Display category and justification
-                    category = article.get('category', 'N/A')
-                    category_justification = article.get('category_justification', 'No justification available.')
-                    st.subheader("Categorization")
-                    st.markdown(f"**Category:** {category}")
-                    st.markdown(f"**Justification:** {category_justification}")
-
                     # Assessment box displayed before criteria details
                     assessment = article.get('assessment', 'N/A')
                     score = article.get('assessment_score', 0)
@@ -535,6 +535,7 @@ def main():
                     criteria = article.get('criteria_results', [])
                     with st.expander("Criteria Details", expanded=False):
                         render_criteria_dashboard(criteria)
+                    st.markdown(f"**Justification:** {category_justification}")
         elif st.session_state.scan_complete and not st.session_state.current_articles:
             with results_section:
                 st.warning("No articles found. Please try adjusting the time period or check the source sites.")
