@@ -1,0 +1,43 @@
+Crocs Articles Categorization Framework
+1. Content & Creative
+Use of generative AI to enhance how brands engage, convert, and retain consumers through:
+- Dynamic content generation on product pages for personalization, SEO, and UX
+- Scalable creative production of visuals, videos, ads, and branded assets
+- AI-optimized marketing, designed for visibility within LLMs and AI-driven discovery
+- Automated ad workflows, where AI handles campaign creation, targeting, and performance
+2. Business Intelligence (BI)
+Applications of GenAI in enhancing decision-making through data, including:
+- Conversational BI tools and dashboards
+- Advanced sales forecasting
+- AI-driven merchandising, allocation, and replenishment
+- Development and tracking of digital KPIs
+- Broader applications of GenAI for smarter business insights
+3. Product Design & Manufacturing
+Use of GenAI in product development processes, particularly in:
+- Ideation and concept generation
+- New product development
+4. Supply Chain, Distribution & Logistics
+GenAI-driven improvements in end-to-end supply chain operations, such as:
+- Demand forecasting and inventory planning
+- Warehouse and logistics optimization
+- Shipping time and route management
+- Forecasting related to supply chain
+- Reduction of manual work across distribution networks
+5. Enterprise Chat & Workplace AI
+Use of GenAI in enterprise communication and collaboration tools, including:
+- ChatGPT for Enterprise or similar deployments (e.g., Perplexity, Gemini, Anthropic)
+- Custom GPTs and internal knowledge assistants
+- SaaS/startup solutions aimed at enterprise productivity
+- Case studies from large-scale enterprise rollouts
+6. Other Applications
+- Customer service and engagement tools
+- Tech and software development use cases
+- Organizational efficiency, operations, and HR tools
+7. Competitor Updates
+GenAI-related developments specific to key industry players:
+- Adidas
+- Nike
+- Deckers
+- Skechers
+- OOFOS
+- Puma

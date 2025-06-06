@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import datetime, timedelta
 from utils.content_extractor import load_source_sites, find_ai_articles, extract_full_content
 from utils.ai_analyzer import summarize_article
+from utils.ai_analyzer import categorize_article_content
 from utils.report_tools import (
     generate_pdf_report,
     generate_csv_report,
@@ -151,6 +152,14 @@ def process_article(article, source, cutoff_time, db, seen_urls):
             'takeaway': article_data['takeaway']
         })
         article_data.update(eval_result)
+
+        # Categorize article
+        try:
+            categorization = categorize_article_content(article['title'], content)
+        except Exception as e:
+            logger.warning(f"Categorization failed for {article['title']}: {e}")
+            categorization = {'category': 'Uncategorized', 'category_justification': 'Error during categorization process.'}
+        article_data.update(categorization)
 
         # Save to database if possible
         try:
@@ -509,6 +518,13 @@ def main():
                     """, unsafe_allow_html=True)
 
                     st.markdown(f'<div class="takeaway-box">{takeaway_text}</div>', unsafe_allow_html=True)
+
+                    # Display category and justification
+                    category = article.get('category', 'N/A')
+                    category_justification = article.get('category_justification', 'No justification available.')
+                    st.subheader("Categorization")
+                    st.markdown(f"**Category:** {category}")
+                    st.markdown(f"**Justification:** {category_justification}")
 
                     # Assessment box displayed before criteria details
                     assessment = article.get('assessment', 'N/A')

@@ -25,7 +25,12 @@ def _get_client():
     return _client
 
 # Simple in-memory cache for API responses
+# Simple in-memory cache for API responses
 _cache = {}
+
+# Cached categorization framework and mtime
+_cached_framework: Optional[str] = None
+_cached_framework_mtime: float = 0.0
 
 # Cached rubric and file modification timestamp
 _cached_rubric: Optional[str] = None
@@ -49,6 +54,61 @@ def _get_takeaway_rubric() -> str:
         _cached_rubric_mtime = mtime
 
     return _cached_rubric
+
+
+def get_categorization_framework_text() -> str:
+    """Load the categorization framework text from data/criteria."""
+    global _cached_framework, _cached_framework_mtime
+    framework_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                  "data", "criteria", "categorization_framework.txt")
+
+    try:
+        mtime = os.path.getmtime(framework_path)
+    except OSError:
+        mtime = 0.0
+
+    if _cached_framework is None or mtime != _cached_framework_mtime:
+        try:
+            with open(framework_path, "r", encoding="utf-8") as f:
+                _cached_framework = f.read()
+        except Exception:
+            _cached_framework = ""
+        _cached_framework_mtime = mtime
+
+    return _cached_framework or "Error: Categorization framework file not found."
+
+
+CATEGORIZATION_PROMPT_TEMPLATE = """
+You are an expert AI analyst specializing in the retail and e-commerce industry, with a focus on Crocs and its competitors.
+Your task is to categorize an article based on the provided \"Crocs Articles Categorization Framework\" and provide a brief justification for your choice.
+
+Here is the framework:
+--- FRAMEWORK START ---
+{categorization_framework}
+--- FRAMEWORK END ---
+
+Article Information:
+Title: {title}
+Content:
+{content_snippet}
+---
+
+Instructions:
+1. Carefully read the article information.
+2. Based *only* on the article content and the provided framework, select the ONE most appropriate category from the list (e.g., \"Content & Creative\", \"Business Intelligence (BI)\", etc.).
+3. Provide a concise justification (1-2 sentences) explaining *why* you chose that category, referencing specific aspects of the article and how they align with the category definition.
+4. If the article clearly discusses a specific competitor mentioned in category 7 (Adidas, Nike, Deckers, Skechers, OOFOS, Puma) regarding their GenAI developments, choose \"Competitor Updates\".
+5. If the article doesn't fit neatly into categories 1-5 or 7, use \"Other Applications\".
+6. Your output MUST be a JSON object with two keys: \"category\" and \"justification\".
+
+Example Output:
+{{
+  "category": "Content & Creative",
+  "justification": "The article discusses how the brand is using GenAI to create personalized ad copy and visuals at scale, aligning with scalable creative production."
+}}
+
+Analyze the article and provide your categorization and justification in the specified JSON format.
+"""
 
 def _validate_takeaway(takeaway: str) -> Dict[str, Any]:
     """Validate takeaway against rubric and provide refinement instructions."""
@@ -464,4 +524,71 @@ def summarize_article(content: str) -> Dict[str, Any]:
         logger.error(f"Error summarizing article: {str(e)}")
         return {
             "takeaway": "Unable to analyze content at this time."
+        }
+
+
+def categorize_article_content(title: str, content: str) -> Dict[str, str]:
+    """Categorize article content using an LLM."""
+    framework_text = get_categorization_framework_text()
+    if framework_text.startswith("Error"):
+        return {"category": "Error", "category_justification": framework_text}
+
+    content_snippet = (content[:3000] + "...") if len(content) > 3000 else content
+
+    prompt = CATEGORIZATION_PROMPT_TEMPLATE.format(
+        categorization_framework=framework_text,
+        title=title,
+        content_snippet=content_snippet,
+    )
+
+    try:
+        response = _get_client().chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an expert AI analyst."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"},
+            timeout=25,
+        )
+
+        if response and response.choices and response.choices[0].message:
+            content_json_str = response.choices[0].message.content.strip()
+            if content_json_str.startswith("```json"):
+                content_json_str = content_json_str[7:]
+            if content_json_str.endswith("```"):
+                content_json_str = content_json_str[:-3]
+
+            data = json.loads(content_json_str)
+            if "category" in data and "justification" in data:
+                return {
+                    "category": data.get("category", "Uncategorized"),
+                    "category_justification": data.get(
+                        "justification", "No justification provided."
+                    ),
+                }
+            logger.warning("Categorization output missing keys")
+            return {
+                "category": "Uncategorized",
+                "category_justification": "LLM output format error.",
+            }
+
+        logger.warning("No valid response from LLM for categorization")
+        return {
+            "category": "Uncategorized",
+            "category_justification": "LLM response error.",
+        }
+
+    except json.JSONDecodeError as e:
+        logger.error(f"JSONDecodeError during categorization: {e}")
+        return {
+            "category": "Uncategorized",
+            "category_justification": "Error decoding LLM JSON response.",
+        }
+    except Exception as e:
+        logger.error(f"Error in categorize_article_content: {str(e)}")
+        return {
+            "category": "Uncategorized",
+            "category_justification": f"Categorization error: {str(e)}",
         }
