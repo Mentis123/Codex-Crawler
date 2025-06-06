@@ -247,9 +247,7 @@ class ReportAgent(BaseAgent):
                 assessment = article.get('assessment', 'N/A')
                 score = article.get('assessment_score', 0)
                 content.append(Paragraph(f"<b>Assessment:</b> {assessment} (Score: {score}%)", article_style))
-                category = article.get('category', 'N/A')
                 justification = article.get('category_justification', 'N/A')
-                content.append(Paragraph(f"<b>Use Case Category:</b> {category}", article_style))
                 content.append(Paragraph(f"<b>Use Case Category Justification:</b> {justification}", article_style))
 
                 # Add space between articles
