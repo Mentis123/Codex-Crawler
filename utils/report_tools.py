@@ -105,7 +105,7 @@ def generate_pdf_report(articles):
                 ('FONTNAME', (1, 1), (1, -1), 'Helvetica-Bold'),
                 ('FONTSIZE', (1, 1), (1, -1), 12),
             ]
-            
+
             for idx, crit in enumerate(crit_results, 1):
                 status = "✓" if crit.get('status') else "✗"
                 table_data.append([
@@ -118,7 +118,7 @@ def generate_pdf_report(articles):
                     table_styles.append(('TEXTCOLOR', (1, idx), (1, idx), colors.green))
                 else:
                     table_styles.append(('TEXTCOLOR', (1, idx), (1, idx), colors.red))
-                    
+
             table = Table(table_data, colWidths=[2.5 * inch, 0.6 * inch, 3.9 * inch])
             table.setStyle(TableStyle(table_styles))
             content.append(table)
@@ -186,7 +186,6 @@ def generate_excel_report(articles):
             'Title': article.get('title', ''),
             'Takeaway': article.get('takeaway', ''),
             'Date': article.get('date', ''),
-            'Use Case Category Justification': article.get('category_justification', 'N/A'),
         }
         data.append(row)
 
