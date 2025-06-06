@@ -503,9 +503,6 @@ def main():
                     takeaway_text = article.get('takeaway', 'No takeaway available')
                     takeaway_text = clean_takeaway(takeaway_text)
 
-                    # Display the takeaway with smaller font
-                    st.markdown("**Takeaway**")
-
                     # Custom CSS to ensure proper text wrapping
                     st.markdown("""
                     <style>
@@ -525,7 +522,10 @@ def main():
                     </style>
                     """, unsafe_allow_html=True)
 
-                    st.markdown(f'<div class="takeaway-box">{takeaway_text}</div>', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div class="takeaway-box"><strong>Takeaway:</strong> {takeaway_text}</div>',
+                        unsafe_allow_html=True,
+                    )
 
                     # Assessment box displayed before criteria details
                     assessment = article.get('assessment', 'N/A')
