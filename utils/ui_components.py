@@ -160,14 +160,6 @@ def render_settings_drawer():
                     "Retail Terms (comma separated)",
                     ", ".join(eval_cfg.get("retail_terms", [])),
                 )
-                roi_pattern = st.text_input(
-                    "ROI Regex Pattern",
-                    eval_cfg.get("roi_pattern", ""),
-                )
-                promo_pattern = st.text_input(
-                    "Promotional Regex Pattern",
-                    eval_cfg.get("promotional_pattern", ""),
-                )
                 deployment_terms = st.text_area(
                     "Deployment Terms (comma separated)",
                     ", ".join(eval_cfg.get("deployment_terms", [])),
@@ -186,8 +178,6 @@ def render_settings_drawer():
                     eval_cfg["companies"] = [c.strip() for c in companies.split(",") if c.strip()]
                     eval_cfg["tools"] = [t.strip() for t in tools.split(",") if t.strip()]
                     eval_cfg["retail_terms"] = [r.strip() for r in retail_terms.split(",") if r.strip()]
-                    eval_cfg["roi_pattern"] = roi_pattern
-                    eval_cfg["promotional_pattern"] = promo_pattern
                     eval_cfg["deployment_terms"] = [d.strip() for d in deployment_terms.split(",") if d.strip()]
                     eval_cfg["major_platforms"] = [m.strip() for m in major_platforms.split(",") if m.strip()]
                     config_data["evaluation"] = eval_cfg
