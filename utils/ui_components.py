@@ -117,7 +117,7 @@ def render_settings_drawer():
             with col2:
                 unit_options = ["Days", "Weeks"]
                 default_index = unit_options.index(st.session_state.get("time_unit", "Weeks"))
-                st.session_state.time_unit = st.selectbox(
+                st.selectbox(
                     "Unit",
                     unit_options,
                     index=default_index,
