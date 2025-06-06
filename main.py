@@ -48,8 +48,11 @@ if 'initialized' not in st.session_state:
         st.session_state.csv_data = None  # Initialize CSV data
         st.session_state.excel_data = None  # Initialize Excel data
         st.session_state.show_settings = True  # Show settings panel on first load
-        st.session_state.time_value = 1  # Default time period value
-        st.session_state.time_unit = "Weeks"  # Default time period unit
+        # Initialize time values only if they don't exist
+        if "time_value" not in st.session_state:
+            st.session_state.time_value = 1  # Default time period value
+        if "time_unit" not in st.session_state:
+            st.session_state.time_unit = "Weeks"  # Default time period unit
         st.session_state.lookback_days = calculate_lookback_days(
             st.session_state.time_value, st.session_state.time_unit
         )

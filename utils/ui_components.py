@@ -85,8 +85,6 @@ def render_settings_drawer():
 
     if "show_settings" not in st.session_state:
         st.session_state.show_settings = False
-    if "show_url_modal" not in st.session_state:
-        st.session_state.show_url_modal = False
 
     st.markdown(
         f"""
@@ -136,12 +134,6 @@ def render_settings_drawer():
                 type="primary",
                 key="fetch_btn",
             )
-            url_button = st.button(
-                "URL Management",
-                disabled=st.session_state.get("is_fetching", False),
-                type="primary",
-                key="url_mgmt_btn",
-            )
             if fetch_button:
                 # Hide the drawer immediately when starting a fetch
                 st.session_state.show_settings = False
@@ -149,8 +141,6 @@ def render_settings_drawer():
                     "<script>window.hideSettingsDrawer && window.hideSettingsDrawer();</script>",
                     unsafe_allow_html=True,
                 )
-            if url_button:
-                st.session_state.show_url_modal = True
 
             config_saved = False
             with st.expander("Configuration", expanded=False):
@@ -158,6 +148,26 @@ def render_settings_drawer():
 
                 config_data = load_config()
                 eval_cfg = config_data.get("evaluation", {})
+
+                # URL Management section
+                st.subheader("URL Management")
+                full_default = "\n".join(config_data.get("full_scan_urls", []))
+                test_default = "\n".join(config_data.get("test_scan_urls", []))
+                
+                url_col1, url_col2 = st.columns(2)
+                with url_col1:
+                    full_text = st.text_area("Full Scan URLs", full_default, height=200, key="full_urls")
+                with url_col2:
+                    test_text = st.text_area("Test Scan URLs", test_default, height=200, key="test_urls")
+                
+                if st.button("Save URL Configuration", key="save_urls_btn"):
+                    config_data["full_scan_urls"] = [u.strip() for u in full_text.splitlines() if u.strip()]
+                    config_data["test_scan_urls"] = [u.strip() for u in test_text.splitlines() if u.strip()]
+                    save_config(config_data)
+                    st.success("URL configuration saved.")
+
+                st.divider()
+                st.subheader("Evaluation Criteria")
 
                 companies = st.text_area(
                     "Companies (comma separated)",
@@ -185,7 +195,7 @@ def render_settings_drawer():
                     height=150,
                 )
 
-                if st.button("Save Configuration", key="save_config_btn"):
+                if st.button("Save Evaluation Configuration", key="save_config_btn"):
                     eval_cfg["companies"] = [c.strip() for c in companies.split(",") if c.strip()]
                     eval_cfg["tools"] = [t.strip() for t in tools.split(",") if t.strip()]
                     eval_cfg["retail_terms"] = [r.strip() for r in retail_terms.split(",") if r.strip()]
@@ -195,26 +205,9 @@ def render_settings_drawer():
                     config_data["takeaway_rubric"] = rubric
                     save_config(config_data)
                     config_saved = True
-                    st.success("Configuration saved.")
+                    st.success("Evaluation configuration saved.")
 
-            if st.session_state.show_url_modal:
-                from utils.config_manager import load_config, save_config
-                cfg = load_config()
-                full_default = "\n".join(cfg.get("full_scan_urls", []))
-                test_default = "\n".join(cfg.get("test_scan_urls", []))
-                with st.modal("URL Management"):
-                    with st.form("url_mgmt_form"):
-                        left, right = st.columns(2)
-                        full_text = left.text_area("Full Scan URLs", full_default, height=300)
-                        test_text = right.text_area("Test Scan URLs", test_default, height=300)
-                        saved = st.form_submit_button("Save")
-                    if saved:
-                        cfg["full_scan_urls"] = [u.strip() for u in full_text.splitlines() if u.strip()]
-                        cfg["test_scan_urls"] = [u.strip() for u in test_text.splitlines() if u.strip()]
-                        save_config(cfg)
-                        st.session_state.show_url_modal = False
-                        st.success("URL configuration saved.")
-                    st.button("Close", key="close_url_modal", on_click=lambda: st.session_state.update({"show_url_modal": False}))
+            
             return fetch_button, config_saved
 
     return None, False
