@@ -68,18 +68,25 @@ def generate_pdf_report(articles):
         title = article.get('title', 'Untitled')
         url = article.get('url', '')
         content.append(Paragraph(f"{i}. <a href='{url}'>{title}</a>", subtitle_style))
-        content.append(Spacer(1, 6))
+        content.append(Spacer(1, 2))
 
         date = article.get('date', 'Unknown date')
         source = article.get('source', 'Unknown source')
         content.append(Paragraph(f"Published: {date} | Source: {source}", normal_style))
+        content.append(Spacer(1, 4))
 
         category = article.get('category', 'N/A')
         content.append(Paragraph(f"<b>Use Case Category:</b> {category}", normal_style))
+        content.append(Spacer(1, 2))
 
         assessment = article.get('assessment', 'N/A')
         score = article.get('assessment_score', 0)
-        content.append(Paragraph(f"<b>Assessment:</b> {assessment} (Score: {score}%)", normal_style))
+        color_map = {"INCLUDE": "green", "OK": "orange", "CUT": "red"}
+        color = color_map.get(assessment.upper(), "black")
+        content.append(Paragraph(
+            f"<b>Assessment:</b> <font color='{color}'>{assessment}</font> (Score: {score}%)",
+            normal_style,
+        ))
 
         content.append(Spacer(1, 6))
 
@@ -118,7 +125,6 @@ def generate_pdf_report(articles):
             content.append(Spacer(1, 6))
 
         justification = article.get('category_justification', 'N/A')
-        content.append(Paragraph(f"<b>Use Case Category:</b> {category}", normal_style))
         content.append(Paragraph(f"<b>Use Case Category Justification:</b> {justification}", normal_style))
 
         content.append(Spacer(1, 20))
