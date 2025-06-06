@@ -2,6 +2,7 @@
 import trafilatura
 import pandas as pd
 from typing import List, Dict, Optional, Tuple, Any
+from utils.config_manager import load_config
 import requests
 from bs4 import BeautifulSoup
 import logging
@@ -56,25 +57,23 @@ def cache_content(max_age_seconds=3600):
     return decorator
 
 def load_source_sites(test_mode: bool = False) -> List[str]:
-    """Load the source sites from the CSV file."""
+    """Load the source sites from configuration."""
     try:
-        df = pd.read_csv('data/search_sites.csv', header=None)
-        sites = df[0].tolist()
+        cfg = load_config()
+        full_urls = cfg.get("full_scan_urls")
+        test_urls = cfg.get("test_scan_urls") or [
+            "https://techcrunch.com/category/artificial-intelligence/"
+        ]
 
-        # Remove any empty strings or invalid URLs
-        sites = [site.strip() for site in sites if isinstance(site, str) and site.strip()]
+        if not full_urls:
+            df = pd.read_csv("data/search_sites.csv", header=None)
+            full_urls = [site.strip() for site in df[0].tolist() if isinstance(site, str) and site.strip()]
 
-        # Ensure we don't process duplicate sites
-        sites = list(dict.fromkeys(sites))
+        urls = test_urls if test_mode else full_urls
+        urls = list(dict.fromkeys(urls))
 
-        if test_mode:
-            logger.info("Running in test mode - using 1 source: TechCrunch AI")
-            return [
-                'https://techcrunch.com/category/artificial-intelligence/'
-            ]
-
-        logger.info(f"Loaded {len(sites)} source sites for crawling")
-        return sites
+        logger.info(f"Loaded {len(urls)} source sites for {'test' if test_mode else 'full'} scan")
+        return urls
     except Exception as e:
         logger.error(f"Error loading source sites: {e}")
         return []
