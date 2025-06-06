@@ -73,11 +73,16 @@ def generate_pdf_report(articles):
         date = article.get('date', 'Unknown date')
         source = article.get('source', 'Unknown source')
         content.append(Paragraph(f"Published: {date} | Source: {source}", normal_style))
+
         content.append(Spacer(1, 6))
 
         takeaway = article.get('takeaway', 'No takeaway available')
         content.append(Paragraph(f"<b>Key Takeaway:</b> {takeaway}", takeaway_style))
+
         content.append(Spacer(1, 6))
+
+        takeaway = article.get('takeaway', 'No takeaway available')
+        content.append(Paragraph(f"<b>Key Takeaway:</b> {takeaway}", takeaway_style))
 
         crit_results = article.get('criteria_results', [])
         if crit_results:
@@ -117,6 +122,7 @@ def generate_pdf_report(articles):
         justification = article.get('category_justification', 'N/A')
         content.append(Paragraph(f"<b>Use Case Category:</b> {category}", normal_style))
         content.append(Paragraph(f"<b>Use Case Justification:</b> {justification}", normal_style))
+
         content.append(Spacer(1, 20))
 
     doc.build(content)
