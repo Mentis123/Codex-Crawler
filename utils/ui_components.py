@@ -99,15 +99,16 @@ def render_settings_drawer():
 
     if st.session_state.show_settings:
         with st.container():
-            st.session_state.test_mode = st.toggle(
+            st.toggle(
                 "Test Mode",
                 value=st.session_state.get('test_mode', False),
+                key="test_mode",
                 help="In Test Mode, only TechCrunch is scanned",
             )
 
             col1, col2 = st.columns([2, 2])
             with col1:
-                st.session_state.time_value = st.number_input(
+                st.number_input(
                     "Time Period",
                     min_value=1,
                     step=1,
