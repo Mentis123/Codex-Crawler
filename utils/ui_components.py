@@ -107,7 +107,6 @@ def render_settings_drawer():
                 st.number_input(
                     "Time Period",
                     min_value=1,
-                    value=st.session_state.get("time_value", 1),
                     step=1,
                     key="time_value",
                 )
