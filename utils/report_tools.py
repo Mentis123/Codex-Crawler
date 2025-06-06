@@ -78,6 +78,12 @@ def generate_pdf_report(articles):
         takeaway = article.get('takeaway', 'No takeaway available')
         content.append(Paragraph(f"<b>Key Takeaway:</b> {takeaway}", takeaway_style))
 
+        category = article.get('category', 'N/A')
+        justification = article.get('category_justification', 'N/A')
+        content.append(Paragraph(f"<b>Category:</b> {category}", normal_style))
+        content.append(Paragraph(f"<b>Justification:</b> {justification}", normal_style))
+        content.append(Spacer(1, 6))
+
         crit_results = article.get('criteria_results', [])
         if crit_results:
             table_data = [["Criteria", "Status", "Notes"]]
@@ -141,6 +147,8 @@ def generate_csv_report(articles):
             'Date': article.get('date', ''),
             'Source': article.get('source', ''),
             'Takeaway': article.get('takeaway', ''),
+            'Category': article.get('category', 'N/A'),
+            'Category Justification': article.get('category_justification', 'N/A'),
             'Assessment': article.get('assessment', ''),
             'Score': article.get('assessment_score', 0),
         }
@@ -175,6 +183,8 @@ def generate_excel_report(articles):
             'Date': article.get('date', ''),
             'Source': article.get('source', ''),
             'Takeaway': article.get('takeaway', ''),
+            'Category': article.get('category', 'N/A'),
+            'Category Justification': article.get('category_justification', 'N/A'),
             'Assessment': article.get('assessment', ''),
             'Score': article.get('assessment_score', 0),
         }
