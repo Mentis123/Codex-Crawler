@@ -73,16 +73,17 @@ def generate_pdf_report(articles):
         date = article.get('date', 'Unknown date')
         source = article.get('source', 'Unknown source')
         content.append(Paragraph(f"Published: {date} | Source: {source}", normal_style))
+
+        category = article.get('category', 'N/A')
+        content.append(Paragraph(f"<b>Category:</b> {category}", normal_style))
+
+        assessment = article.get('assessment', 'N/A')
+        score = article.get('assessment_score', 0)
+        content.append(Paragraph(f"<b>Assessment:</b> {assessment} (Score: {score}%)", normal_style))
         content.append(Spacer(1, 6))
 
         takeaway = article.get('takeaway', 'No takeaway available')
         content.append(Paragraph(f"<b>Key Takeaway:</b> {takeaway}", takeaway_style))
-
-        category = article.get('category', 'N/A')
-        justification = article.get('category_justification', 'N/A')
-        content.append(Paragraph(f"<b>Category:</b> {category}", normal_style))
-        content.append(Paragraph(f"<b>Justification:</b> {justification}", normal_style))
-        content.append(Spacer(1, 6))
 
         crit_results = article.get('criteria_results', [])
         if crit_results:
@@ -115,9 +116,8 @@ def generate_pdf_report(articles):
             content.append(table)
             content.append(Spacer(1, 6))
 
-        assessment = article.get('assessment', 'N/A')
-        score = article.get('assessment_score', 0)
-        content.append(Paragraph(f"<b>Assessment:</b> {assessment} (Score: {score}%)", normal_style))
+        justification = article.get('category_justification', 'N/A')
+        content.append(Paragraph(f"<b>Justification:</b> {justification}", normal_style))
         content.append(Spacer(1, 20))
 
     doc.build(content)

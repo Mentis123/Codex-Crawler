@@ -195,8 +195,15 @@ class ReportAgent(BaseAgent):
                 date = article.get('date', 'Unknown date')
                 source = article.get('source', 'Unknown source')
                 content.append(Paragraph(f"Published: {date} | Source: {source}", normal_style))
+
+                category = article.get('category', 'N/A')
+                content.append(Paragraph(f"<b>Category:</b> {category}", article_style))
+
+                assessment = article.get('assessment', 'N/A')
+                score = article.get('assessment_score', 0)
+                content.append(Paragraph(f"<b>Assessment:</b> {assessment} (Score: {score}%)", article_style))
                 content.append(Spacer(1, 6))
-                
+
                 # Takeaway
                 takeaway = article.get('takeaway', 'No takeaway available')
                 content.append(Paragraph(f"<b>Key Takeaway:</b> {takeaway}", takeaway_style))
@@ -237,9 +244,8 @@ class ReportAgent(BaseAgent):
                     content.append(table)
                     content.append(Spacer(1, 6))
 
-                assessment = article.get('assessment', 'N/A')
-                score = article.get('assessment_score', 0)
-                content.append(Paragraph(f"<b>Assessment:</b> {assessment} (Score: {score}%)", article_style))
+                justification = article.get('category_justification', 'N/A')
+                content.append(Paragraph(f"<b>Justification:</b> {justification}", article_style))
 
                 # Add space between articles
                 content.append(Spacer(1, 20))
