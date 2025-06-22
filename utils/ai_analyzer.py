@@ -144,12 +144,24 @@ def _validate_takeaway(takeaway: str, article_content_sample: str = "") -> Dict[
         r'\bfor ai leader(s)?\b',
         r'\bai leadership\b',
         r'\bthe retail leader(s)?\b',
+        r'\bretail leader(s)?\b',
         r'\byour target reader\b',
         r'\bthe ai leader\b',
         r'\bleader(s)? in ai\b',
         r'\bleader(s)? concerned with\b',
         r'\binsights for.*leader(s)?\b',
-        r'\brelevant.*leader(s)?\b'
+        r'\brelevant.*leader(s)?\b',
+        r'\bleader(s)? can leverage\b',
+        r'\bthat.*leader(s)? can\b',
+        r'\btools that.*leader(s)?\b',
+        r'\benabling.*leader(s)?\b',
+        r'\bhelping.*leader(s)?\b',
+        r'\bassisting.*leader(s)?\b',
+        r'\bfor.*leader(s)? to\b',
+        r'\bleader(s)? to leverage\b',
+        r'\bleader(s)? should\b',
+        r'\bleader(s)? need\b',
+        r'\bleader(s)? must\b'
     ]
     
     if any(re.search(pattern, takeaway, re.IGNORECASE) for pattern in leader_patterns):
