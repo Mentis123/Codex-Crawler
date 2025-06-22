@@ -38,6 +38,9 @@ def test_takeaway_generation():
         print(takeaway)
         print("=" * 80)
         
+        # Import validation function to match main app behavior
+        from utils.ai_analyzer import _validate_takeaway, _llm_check_leader_mentions
+        
         # Show word and sentence count
         word_count = len(takeaway.split())
         sentence_count = len([s for s in takeaway.split('.') if s.strip()])
@@ -47,11 +50,28 @@ def test_takeaway_generation():
         print(f"- Sentence count: {sentence_count}")
         print(f"- Character count: {len(takeaway)}")
         
+        # Perform full validation like the main app does
+        validation_result = _validate_takeaway(takeaway, content[:1000])
+        leader_check = _llm_check_leader_mentions(takeaway)
+        
         # Check if it meets the rubric criteria
         print(f"\nRubric Compliance:")
         print(f"- Word count (70-90): {'✓' if 70 <= word_count <= 90 else '✗'}")
         print(f"- Sentence count (3-4): {'✓' if 3 <= sentence_count <= 4 else '✗'}")
         print(f"- No bullet points: {'✓' if not any(bullet in takeaway for bullet in ['*', '-', '•', '1.', 'a)']) else '✗'}")
+        print(f"- Passes full validation: {'✓' if validation_result.get('passes_validation', False) else '✗'}")
+        print(f"- Passes leader check: {'✓' if leader_check.get('passes_check', True) else '✗'}")
+        
+        # Show validation issues if any
+        if not validation_result.get('passes_validation', True):
+            print(f"\nValidation Issues:")
+            for issue in validation_result.get('issues_found', []):
+                print(f"- {issue}")
+        
+        if not leader_check.get('passes_check', True):
+            print(f"\nLeader Mention Issues:")
+            for issue in leader_check.get('issues', []):
+                print(f"- {issue}")
         
     except Exception as e:
         print(f"Error generating takeaway: {str(e)}")
