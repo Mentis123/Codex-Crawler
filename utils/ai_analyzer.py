@@ -136,12 +136,24 @@ def _validate_takeaway(takeaway: str, article_content_sample: str = "") -> Dict[
         passes_validation = False
 
     # Rule 11: No overt mention of "the AI leader" or target reader.
-    # Making this check case-insensitive.
-    if re.search(r'\bai leader\b', takeaway, re.IGNORECASE) or \
-       re.search(r'\bAI leaders\b', takeaway, re.IGNORECASE) or \
-       re.search(r'\byour target reader\b', takeaway, re.IGNORECASE) or \
-       re.search(r'\bthe retail leader\b', takeaway, re.IGNORECASE):
-        issues_found.append("Takeaway overtly mentions 'AI leader' or the target reader.")
+    # Making this check case-insensitive and comprehensive.
+    leader_patterns = [
+        r'\bai leader(s)?\b',
+        r'\bretail ai leader(s)?\b', 
+        r'\bai leader(s)? in retail\b',
+        r'\bfor ai leader(s)?\b',
+        r'\bai leadership\b',
+        r'\bthe retail leader(s)?\b',
+        r'\byour target reader\b',
+        r'\bthe ai leader\b',
+        r'\bleader(s)? in ai\b',
+        r'\bleader(s)? concerned with\b',
+        r'\binsights for.*leader(s)?\b',
+        r'\brelevant.*leader(s)?\b'
+    ]
+    
+    if any(re.search(pattern, takeaway, re.IGNORECASE) for pattern in leader_patterns):
+        issues_found.append("Takeaway overtly mentions 'AI leader', 'retail leader', or the target reader.")
         passes_validation = False
 
     # For more nuanced checks, use an LLM.
@@ -379,7 +391,9 @@ def _process_chunk(chunk: str) -> Optional[Dict[str, Any]]:
         prompt = (
             "Analyze this text and create a business-focused takeaway following these STRICT RULES:\n\n"
             + _get_takeaway_rubric() +
-            "\n\nRespond with valid JSON only: {\"takeaway\": \"Your concise takeaway here\"}\n"
+            "\n\nCRITICAL: Never mention 'AI leaders', 'retail leaders', 'leaders', or the target audience directly. "
+            "Write as if speaking about general industry implications, not to specific readers.\n\n"
+            "Respond with valid JSON only: {\"takeaway\": \"Your concise takeaway here\"}\n"
             "Ensure your JSON has properly closed quotes and braces.\n\n"
             + chunk
         )
@@ -483,7 +497,9 @@ def _combine_summaries(summaries: List[Dict[str, Any]]) -> Dict[str, Any]:
         prompt = (
             "Combine these takeaways into a single business-focused takeaway following these STRICT RULES:\n\n"
             + _get_takeaway_rubric() +
-            "\n\nRespond in JSON format: {\"takeaway\": \"combined takeaway\"}\n\n"
+            "\n\nCRITICAL: Never mention 'AI leaders', 'retail leaders', 'leaders', or the target audience directly. "
+            "Write as if describing general industry trends and implications.\n\n"
+            "Respond in JSON format: {\"takeaway\": \"combined takeaway\"}\n\n"
             f"Takeaways to combine: {combined_text[:50000]}"
         )
 
