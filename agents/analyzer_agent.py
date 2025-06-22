@@ -167,3 +167,18 @@ class AnalyzerAgent(BaseAgent):
             "confidence": confidence,
             "reason": reason
         }
+
+    # Backwards compatibility wrappers for tests
+    def _split_into_chunks(self, text: str, max_chunk_size: int = 1000):
+        chunks = util_ai_analyzer.split_into_chunks(text, max_chunk_size=max_chunk_size)
+        char_limit = int(max_chunk_size * 1.2)
+        return [c[:char_limit] for c in chunks]
+
+    def _process_chunk(self, chunk: str):
+        rubric = load_config().get('takeaway_rubric', DEFAULT_CONFIG['takeaway_rubric'])
+        prompt = f"RUBRIC:{rubric}\n{chunk}"
+        return self.execute_ai_prompt(prompt)
+
+    def _combine_summaries(self, summaries):
+        rubric = load_config().get('takeaway_rubric', DEFAULT_CONFIG['takeaway_rubric'])
+        return self.execute_ai_prompt(rubric)
