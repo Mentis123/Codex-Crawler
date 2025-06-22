@@ -67,6 +67,10 @@ def generate_pdf_report(articles):
     for i, article in enumerate(articles, 1):
         title = article.get('title', 'Untitled')
         url = article.get('url', '')
+        if 'file:///' in url:
+            url = url.split('https://')[-1]
+            url = f'https://{url}'
+        url = unquote(url)
         content.append(Paragraph(f"{i}. <a href='{url}'>{title}</a>", subtitle_style))
         content.append(Spacer(1, 2))
 
