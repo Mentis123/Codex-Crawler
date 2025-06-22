@@ -110,46 +110,149 @@ Example Output:
 Analyze the article and provide your categorization and justification in the specified JSON format.
 """
 
-def _validate_takeaway(takeaway: str) -> Dict[str, Any]:
-    """Validate takeaway against rubric and provide refinement instructions."""
+def _validate_takeaway(takeaway: str, article_content_sample: str = "") -> Dict[str, Any]:
+    """
+    Validate takeaway against the rubric and provide refinement instructions.
+    The validation will use an LLM to check adherence to each rule.
+    """
+    rubric = _get_takeaway_rubric()
+    word_count = len(takeaway.split())
+    sentence_count = len(re.findall(r'[.!?]+', takeaway))
+
+    issues_found = []
+    passes_validation = True  # Assume true initially
+
+    # Rule 1: Concise paragraph (3–4 sentences, 70–90 words). Avoid long sentences.
+    if not (3 <= sentence_count <= 4):
+        issues_found.append(f"Sentence count is {sentence_count}, should be 3-4.")
+        passes_validation = False
+    if not (70 <= word_count <= 90):
+        issues_found.append(f"Word count is {word_count}, should be 70-90 words.")
+        passes_validation = False
+
+    # Rule 9: No bullet points. Must be paragraph form.
+    if any(bullet in takeaway for bullet in ['*', '-', '•', '1.', 'a)']):
+        issues_found.append("Takeaway contains bullet points or list-like formatting.")
+        passes_validation = False
+
+    # Rule 11: No overt mention of "the AI leader" or target reader.
+    # Making this check case-insensitive.
+    if re.search(r'\bai leader\b', takeaway, re.IGNORECASE) or \
+       re.search(r'\bAI leaders\b', takeaway, re.IGNORECASE) or \
+       re.search(r'\byour target reader\b', takeaway, re.IGNORECASE) or \
+       re.search(r'\bthe retail leader\b', takeaway, re.IGNORECASE):
+        issues_found.append("Takeaway overtly mentions 'AI leader' or the target reader.")
+        passes_validation = False
+
+    # For more nuanced checks, use an LLM.
+    # These include strategic relevance, jargon, tone, grounding in article, etc.
+    # This prompt asks the LLM to act as an evaluator.
+    # Only call LLM if basic programmatic checks pass or if we want LLM's opinion regardless.
+    # For now, let's assume we always want the LLM's qualitative assessment.
+
+    validation_prompt = f"""
+    You are an expert evaluator for AI-generated news takeaways for the retail industry.
+    Evaluate the following takeaway based *only* on the provided RUBRIC.
+    Do not evaluate based on the article content itself, only the takeaway's adherence to the rubric.
+
+    RUBRIC:
+    {rubric}
+
+    TAKEAWAY TO EVALUATE:
+    "{takeaway}"
+
+    ARTICLE CONTENT SAMPLE (for context if rules require grounding in the article, but evaluate the takeaway itself):
+    "{article_content_sample[:1000]}..."
+
+    Perform the following checks based on the RUBRIC:
+    1.  **Strategic Relevance**: Does the takeaway highlight strategic relevance for AI leaders in the retail industry? (Rule 2)
+    2.  **Specificity**: Does it mention specific company names, AI tools, or platforms if appropriate (i.e., if they were likely in an article that would lead to this takeaway)? (Rule 3)
+    3.  **Data Inclusion**: Does it seem to include quantitative/qualitative data appropriately, assuming it was present in the source? (Rule 4)
+    4.  **Business Impact**: Does it emphasize business impact and strategic benefits (e.g., content automation, CX improvement)? (Rule 5)
+    5.  **Clarity & Jargon**: Is the language clear, digestible, and avoiding technical jargon? (Rule 6)
+    6.  **Importance for Retail AI Leaders**: Does it explain why the news matters for AI leaders in retail (implications for e-commerce, logistics, etc.)? (Rule 7)
+    7.  **Strategic Perspective**: Does it add a human or strategic perspective (vision, goals, market shifts)? (Rule 8)
+    8.  **Vagueness/Visionary Statements**: Is it free of vague or visionary statements, and grounded in plausible specifics? (Rule 10)
+
+    Respond with a JSON object in the following format:
+    {{
+        "llm_passes_qualitative_checks": true/false,
+        "llm_issues_found": ["Specific issue based on the qualitative checks above, e.g., 'Lacks strategic perspective as per Rule 8', 'Uses technical jargon despite Rule 6'"],
+        "llm_refinement_suggestions": "Specific, actionable suggestions to fix these qualitative issues."
+    }}
+    Be very critical and detailed in your issues and suggestions if any are found. If it passes all qualitative checks, llm_issues_found should be an empty list and llm_refinement_suggestions should be an empty string.
+    """
+
+    llm_validation_result = {
+        "llm_passes_qualitative_checks": True,
+        "llm_issues_found": [],
+        "llm_refinement_suggestions": ""
+    }
+
     try:
-        validation_prompt = f"""
-        Evaluate this takeaway against the rubric and provide specific refinement instructions:
-
-        RUBRIC:
-        {_get_takeaway_rubric()}
-
-        TAKEAWAY TO EVALUATE:
-        "{takeaway}"
-
-        Respond with JSON in this format:
-        {{
-            "passes_validation": true/false,
-            "word_count": actual_word_count,
-            "issues_found": ["issue1", "issue2"],
-            "refinement_instructions": "Specific instructions for fixing the takeaway"
-        }}
-        """
-
         response = _get_client().chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o", # Ensure this model is appropriate
             messages=[
-                {"role": "system", "content": "You are a validation system that checks takeaways against rubrics and provides refinement instructions."},
+                {"role": "system", "content": "You are an expert evaluator of AI-generated text, focusing on adherence to specific stylistic and content rules."},
                 {"role": "user", "content": validation_prompt}
             ],
-            max_completion_tokens=1000,
+            max_completion_tokens=1000, # Adjust as needed
             response_format={"type": "json_object"},
-            timeout=20
+            temperature=0.1, # Low temperature for critical evaluation
+            timeout=30 # Increased timeout
         )
 
         if response and response.choices and response.choices[0].message.content:
-            return json.loads(response.choices[0].message.content)
-        
-        return {"passes_validation": True, "issues_found": [], "refinement_instructions": ""}
+            llm_eval = json.loads(response.choices[0].message.content)
+            llm_validation_result["llm_passes_qualitative_checks"] = llm_eval.get("llm_passes_qualitative_checks", True)
+            llm_validation_result["llm_issues_found"] = llm_eval.get("llm_issues_found", [])
+            llm_validation_result["llm_refinement_suggestions"] = llm_eval.get("llm_refinement_suggestions", "")
+
+            if not llm_validation_result["llm_passes_qualitative_checks"]:
+                passes_validation = False # Overall validation fails if LLM finds issues
+                issues_found.extend(llm_validation_result["llm_issues_found"])
+        else:
+            logger.warning("LLM validation returned no content or failed.")
+            # Decide if this is a hard fail or not. For now, let's say it doesn't invalidate previous checks.
+            # issues_found.append("LLM qualitative check could not be performed.")
 
     except Exception as e:
-        logger.error(f"Error validating takeaway: {str(e)}")
-        return {"passes_validation": True, "issues_found": [], "refinement_instructions": ""}
+        logger.error(f"Error during LLM takeaway validation: {str(e)}")
+        # issues_found.append(f"LLM qualitative check failed due to error: {str(e)}")
+        # Do not change passes_validation here, rely on programmatic checks if LLM fails
+
+    # Construct refinement instructions
+    refinement_instructions = "Please address the following issues:\n"
+    if (70 <= word_count <= 90) and (3 <= sentence_count <= 4) and not any(bullet in takeaway for bullet in ['*', '-', '•', '1.', 'a)']):
+         # If basic structural checks pass, focus on LLM suggestions if any
+        if llm_validation_result["llm_refinement_suggestions"]:
+             refinement_instructions += llm_validation_result["llm_refinement_suggestions"]
+        elif not passes_validation: # Basic checks failed but no LLM suggestions
+             for issue in issues_found:
+                refinement_instructions += f"- {issue}\n"
+        else: # Passed all checks
+            refinement_instructions = ""
+    else: # Basic structural checks failed
+        for issue in issues_found:
+            refinement_instructions += f"- {issue}\n"
+        if llm_validation_result["llm_refinement_suggestions"]:
+             refinement_instructions += "Additionally, consider these qualitative improvements:\n" + llm_validation_result["llm_refinement_suggestions"]
+
+
+    # If there are no issues at all, refinement_instructions should be empty
+    if passes_validation and not llm_validation_result["llm_issues_found"]:
+        refinement_instructions = ""
+    elif not issues_found and not llm_validation_result["llm_issues_found"]: # handles if passes_validation became false due to LLM but LLM issues are empty (edge case)
+        refinement_instructions = ""
+
+
+    return {
+        "passes_validation": passes_validation and llm_validation_result["llm_passes_qualitative_checks"],
+        "word_count": word_count,
+        "sentence_count": sentence_count,
+        "issues_found": issues_found,
+        "refinement_instructions": refinement_instructions.strip() if refinement_instructions else "Takeaway meets all primary criteria."
+    }
 
 def _refine_takeaway(original_takeaway: str, refinement_instructions: str, original_content: str) -> str:
     """Refine takeaway based on validation feedback."""
@@ -311,19 +414,22 @@ def _process_chunk(chunk: str) -> Optional[Dict[str, Any]]:
                 
                 # Validate the takeaway and refine if needed
                 if takeaway:
-                    validation = _validate_takeaway(takeaway)
+                    validation = _validate_takeaway(takeaway, chunk) # Pass chunk for context
                     
                     # If validation fails, attempt refinement
                     if not validation.get("passes_validation", True):
                         refinement_instructions = validation.get("refinement_instructions", "")
-                        if refinement_instructions:
-                            logger.info(f"Takeaway validation failed, attempting refinement: {validation.get('issues_found', [])}")
+                        # Only refine if there are actual instructions, not just "Takeaway meets all primary criteria."
+                        if refinement_instructions and refinement_instructions != "Takeaway meets all primary criteria.":
+                            logger.info(f"Takeaway validation failed, attempting refinement. Issues: {validation.get('issues_found', [])}. Instructions: {refinement_instructions}")
                             refined_takeaway = _refine_takeaway(takeaway, refinement_instructions, chunk)
                             result["takeaway"] = refined_takeaway
                             
                             # Log the refinement
-                            logger.info(f"Takeaway refined from {validation.get('word_count', 0)} words")
-                
+                            logger.info(f"Takeaway refined. Original word count: {validation.get('word_count', 0)}")
+                        elif not refinement_instructions:
+                             logger.info(f"Takeaway validation failed but no refinement instructions provided. Issues: {validation.get('issues_found', [])}")
+
                 return result
             except json.JSONDecodeError as json_err:
                 logger.warning(f"JSON decode error: {json_err} - Content: {content[:100]}...")
@@ -413,19 +519,22 @@ def _combine_summaries(summaries: List[Dict[str, Any]]) -> Dict[str, Any]:
                 
                 # Validate the combined takeaway and refine if needed
                 if takeaway:
-                    validation = _validate_takeaway(takeaway)
+                    validation = _validate_takeaway(takeaway, combined_text) # Pass combined_text for context
                     
                     # If validation fails, attempt refinement
                     if not validation.get("passes_validation", True):
                         refinement_instructions = validation.get("refinement_instructions", "")
-                        if refinement_instructions:
-                            logger.info(f"Combined takeaway validation failed, attempting refinement: {validation.get('issues_found', [])}")
+                        # Only refine if there are actual instructions
+                        if refinement_instructions and refinement_instructions != "Takeaway meets all primary criteria.":
+                            logger.info(f"Combined takeaway validation failed, attempting refinement. Issues: {validation.get('issues_found', [])}. Instructions: {refinement_instructions}")
                             refined_takeaway = _refine_takeaway(takeaway, refinement_instructions, combined_text)
                             result["takeaway"] = refined_takeaway
                             
                             # Log the refinement
-                            logger.info(f"Combined takeaway refined from {validation.get('word_count', 0)} words")
-                
+                            logger.info(f"Combined takeaway refined. Original word count: {validation.get('word_count', 0)}")
+                        elif not refinement_instructions:
+                            logger.info(f"Combined takeaway validation failed but no refinement instructions provided. Issues: {validation.get('issues_found', [])}")
+
                 return result
             except json.JSONDecodeError as json_err:
                 logger.warning(f"JSON decode error in combine: {json_err} - Content: {content[:100]}...")
