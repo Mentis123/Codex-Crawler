@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from io import BytesIO
 from typing import List, Dict, Any, Optional
+from urllib.parse import unquote
 
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
@@ -186,9 +187,16 @@ class ReportAgent(BaseAgent):
             for i, article in enumerate(articles, 1):
                 # Article title with link
                 title = article.get('title', 'Untitled Article')
-                url = article.get('url', '')
                 
-                content.append(Paragraph(f"{i}. <a href='{url}'>{title}</a>", subtitle_style))
+                raw_url = article.get('url', '')
+                cleaned_url = raw_url
+                if 'file:///' in cleaned_url:
+                    parts = cleaned_url.split('https://')
+                    if len(parts) > 1:
+                        cleaned_url = f'https://{parts[-1]}'
+                cleaned_url = unquote(cleaned_url)
+
+                content.append(Paragraph(f"{i}. <a href='{cleaned_url}'>{title}</a>", subtitle_style))
                 content.append(Spacer(1, 6))
                 
                 # Publication date and source
@@ -277,9 +285,17 @@ class ReportAgent(BaseAgent):
                 key_points = article.get('key_points', [])
                 key_points_str = "; ".join(key_points) if key_points else ""
                 
+                raw_url = article.get('url', '')
+                cleaned_url = raw_url
+                if 'file:///' in cleaned_url:
+                    parts = cleaned_url.split('https://')
+                    if len(parts) > 1:
+                        cleaned_url = f'https://{parts[-1]}'
+                cleaned_url = unquote(cleaned_url)
+
                 row = {
                     'Use Case Category': article.get('category', 'N/A'),
-                    'URL': article.get('url', ''),
+                    'URL': cleaned_url,
                     'Title': article.get('title', ''),
                     'Takeaway': article.get('takeaway', ''),
                     'Date': article.get('date', ''),
@@ -311,9 +327,17 @@ class ReportAgent(BaseAgent):
                 key_points = article.get('key_points', [])
                 key_points_str = "; ".join(key_points) if key_points else ""
                 
+                raw_url = article.get('url', '')
+                cleaned_url = raw_url
+                if 'file:///' in cleaned_url:
+                    parts = cleaned_url.split('https://')
+                    if len(parts) > 1:
+                        cleaned_url = f'https://{parts[-1]}'
+                cleaned_url = unquote(cleaned_url)
+
                 row = {
                     'Use Case Category': article.get('category', 'N/A'),
-                    'URL': article.get('url', ''),
+                    'URL': cleaned_url,
                     'Title': article.get('title', ''),
                     'Takeaway': article.get('takeaway', ''),
                     'Date': article.get('date', ''),
