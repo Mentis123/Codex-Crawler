@@ -75,8 +75,7 @@ def generate_pdf_report(articles):
         content.append(Spacer(1, 2))
 
         date = article.get('date', 'Unknown date')
-        source = article.get('source', 'Unknown source')
-        content.append(Paragraph(f"Published: {date} | Source: {source}", normal_style))
+        content.append(Paragraph(f"Published: {date} | Source: {url}", normal_style))
         content.append(Spacer(1, 4))
 
         category = article.get('category', 'N/A')

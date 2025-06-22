@@ -201,8 +201,7 @@ class ReportAgent(BaseAgent):
 
                 # Publication date and source
                 date = article.get('date', 'Unknown date')
-                source = article.get('source', 'Unknown source')
-                content.append(Paragraph(f"Published: {date} | Source: {source}", normal_style))
+                content.append(Paragraph(f"Published: {date} | Source: {cleaned_url}", normal_style))
 
                 category = article.get('category', 'N/A')
                 content.append(Paragraph(f"<b>Category:</b> {category}", article_style))
