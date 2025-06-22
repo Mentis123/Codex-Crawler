@@ -55,6 +55,12 @@ def _get_takeaway_rubric() -> str:
     return _cached_rubric
 
 
+def _get_rubric_hash() -> str:
+    """Return a stable hash of the current takeaway rubric."""
+    rubric = _get_takeaway_rubric()
+    return hashlib.md5(rubric.encode()).hexdigest()
+
+
 def get_categorization_framework_text() -> str:
     """Load the categorization framework text from data/criteria."""
     global _cached_framework, _cached_framework_mtime
@@ -138,12 +144,16 @@ def _validate_takeaway(takeaway: str, article_content_sample: str = "") -> Dict[
     # Making this check case-insensitive and comprehensive.
     leader_patterns = [
         r'\bai leader(s)?\b',
-        r'\bretail ai leader(s)?\b', 
+        r'\bretail ai leader(s)?\b',
         r'\bai leader(s)? in retail\b',
         r'\bfor ai leader(s)?\b',
         r'\bai leadership\b',
+        r'\bai executive(s)?\b',
+        r'\bretail executive(s)?\b',
+        r'\bindustry leader(s)?\b',
         r'\bthe retail leader(s)?\b',
         r'\bretail leader(s)?\b',
+        r'\bthe target audience\b',
         r'\byour target reader\b',
         r'\bthe ai leader\b',
         r'\bleader(s)? in ai\b',
@@ -188,12 +198,12 @@ def _validate_takeaway(takeaway: str, article_content_sample: str = "") -> Dict[
     "{article_content_sample[:1000]}..."
 
     Perform the following checks based on the RUBRIC:
-    1.  **Strategic Relevance**: Does the takeaway highlight strategic relevance for AI leaders in the retail industry? (Rule 2)
+    1.  **Strategic Relevance**: Does the takeaway highlight strategic relevance for the retail industry? (Rule 2)
     2.  **Specificity**: Does it mention specific company names, AI tools, or platforms if appropriate (i.e., if they were likely in an article that would lead to this takeaway)? (Rule 3)
     3.  **Data Inclusion**: Does it seem to include quantitative/qualitative data appropriately, assuming it was present in the source? (Rule 4)
     4.  **Business Impact**: Does it emphasize business impact and strategic benefits (e.g., content automation, CX improvement)? (Rule 5)
     5.  **Clarity & Jargon**: Is the language clear, digestible, and avoiding technical jargon? (Rule 6)
-    6.  **Importance for Retail AI Leaders**: Does it explain why the news matters for AI leaders in retail (implications for e-commerce, logistics, etc.)? (Rule 7)
+    6.  **Industry Importance**: Does it explain why the news matters for decision makers in retail (implications for e-commerce, logistics, etc.)? (Rule 7)
     7.  **Strategic Perspective**: Does it add a human or strategic perspective (vision, goals, market shifts)? (Rule 8)
     8.  **Vagueness/Visionary Statements**: Is it free of vague or visionary statements, and grounded in plausible specifics? (Rule 10)
 
@@ -324,7 +334,8 @@ def cache_result(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         # Create a cache key based on function name and arguments
-        cache_key = f"{func.__name__}:{hashlib.md5(str(args).encode()).hexdigest()}"
+        rubric_hash = _get_rubric_hash()
+        cache_key = f"{func.__name__}:{hashlib.md5(str(args).encode()).hexdigest()}:{rubric_hash}"
 
         # If result exists in cache and is less than 6 hours old, return it
         if cache_key in _cache:
@@ -461,6 +472,12 @@ def _process_chunk(chunk: str) -> Optional[Dict[str, Any]]:
                             refined_takeaway = _refine_takeaway(takeaway, refinement_instructions, chunk)
                             result["takeaway"] = refined_takeaway
 
+                            # Re-validate after refinement to ensure no leader mentions slip through
+                            post_validation = _validate_takeaway(refined_takeaway, chunk)
+                            leader_check = _llm_check_leader_mentions(refined_takeaway)
+                            if not post_validation.get("passes_validation", True) or not leader_check.get("passes_check", True):
+                                logger.warning("Refined takeaway still failed validation or leader check")
+
                             # Log the refinement
                             logger.info(f"Takeaway refined. Original word count: {validation.get('word_count', 0)}")
                         elif not refinement_instructions:
@@ -579,6 +596,12 @@ def _combine_summaries(summaries: List[Dict[str, Any]]) -> Dict[str, Any]:
                             refined_takeaway = _refine_takeaway(takeaway, refinement_instructions, combined_text)
                             result["takeaway"] = refined_takeaway
 
+                            # Re-validate after refinement
+                            post_validation = _validate_takeaway(refined_takeaway, combined_text)
+                            leader_check = _llm_check_leader_mentions(refined_takeaway)
+                            if not post_validation.get("passes_validation", True) or not leader_check.get("passes_check", True):
+                                logger.warning("Refined combined takeaway still failed validation or leader check")
+
                             # Log the refinement
                             logger.info(f"Combined takeaway refined. Original word count: {validation.get('word_count', 0)}")
                         elif not refinement_instructions:
@@ -628,7 +651,8 @@ def summarize_article(content: str) -> Dict[str, Any]:
 
         # Generate a unique identifier for the article content for caching
         content_hash = hashlib.md5(content[:10000].encode()).hexdigest()
-        cache_key = f"article_summary:{content_hash}"
+        rubric_hash = _get_rubric_hash()
+        cache_key = f"article_summary:{content_hash}:{rubric_hash}"
 
         # Check if we already have this article cached
         if cache_key in _cache:
@@ -672,6 +696,14 @@ def summarize_article(content: str) -> Dict[str, Any]:
         result = combined if combined else {
             "takeaway": "Error combining article summaries."
         }
+
+        # Final sanitation step before caching
+        final_takeaway = result.get("takeaway", "")
+        if final_takeaway:
+            final_validation = _validate_takeaway(final_takeaway, content)
+            leader_check = _llm_check_leader_mentions(final_takeaway)
+            if not final_validation.get("passes_validation", True) or not leader_check.get("passes_check", True):
+                logger.warning("Final takeaway failed validation or leader check")
 
         # Cache the final result
         _cache[cache_key] = (time.time(), result)
