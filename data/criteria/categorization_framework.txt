@@ -30,9 +30,7 @@ Use of GenAI in enterprise communication and collaboration tools, including:
 - SaaS/startup solutions aimed at enterprise productivity
 - Case studies from large-scale enterprise rollouts
 6. Other Applications
-- Customer service and engagement tools
-- Tech and software development use cases
-- Organizational efficiency, operations, and HR tools
+High-level platform updates (e.g., Meta, OpenAI tools, Gemini apps); Surveys or research on adoption trends and GenAI maturity; Ethical frameworks and evaluation methods for GenAI usage; Strategic AI shifts in org structure, budget allocation, or leadership.
 7. Competitor Updates
 GenAI-related developments specific to key industry players:
 - Adidas
