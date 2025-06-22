@@ -1,4 +1,3 @@
-
 import os
 import json
 import logging
@@ -163,7 +162,7 @@ def _validate_takeaway(takeaway: str, article_content_sample: str = "") -> Dict[
         r'\bleader(s)? need\b',
         r'\bleader(s)? must\b'
     ]
-    
+
     if any(re.search(pattern, takeaway, re.IGNORECASE) for pattern in leader_patterns):
         issues_found.append("Takeaway overtly mentions 'AI leader', 'retail leader', or the target reader.")
         passes_validation = False
@@ -313,7 +312,7 @@ def _refine_takeaway(original_takeaway: str, refinement_instructions: str, origi
         if response and response.choices and response.choices[0].message.content:
             result = json.loads(response.choices[0].message.content)
             return result.get("takeaway", original_takeaway)
-        
+
         return original_takeaway
 
     except Exception as e:
@@ -326,19 +325,19 @@ def cache_result(func):
     def wrapper(*args, **kwargs):
         # Create a cache key based on function name and arguments
         cache_key = f"{func.__name__}:{hashlib.md5(str(args).encode()).hexdigest()}"
-        
+
         # If result exists in cache and is less than 6 hours old, return it
         if cache_key in _cache:
             timestamp, result = _cache[cache_key]
             if time.time() - timestamp < 21600:  # 6 hours
                 logger.info(f"Using cached result for {func.__name__}")
                 return result
-        
+
         # Otherwise, call the function and cache the result
         result = func(*args, **kwargs)
         _cache[cache_key] = (time.time(), result)
         return result
-    
+
     return wrapper
 
 def split_into_chunks(content: str, max_chunk_size: int = 40000) -> List[str]:
@@ -369,7 +368,7 @@ def split_into_chunks(content: str, max_chunk_size: int = 40000) -> List[str]:
                 chunks.append(' '.join(current_chunk))
                 current_chunk = []
                 current_size = 0
-            
+
             # Create chunks from the long sentence
             for i in range(0, len(sentence), max_chunk_chars):
                 chunks.append(sentence[i:i+max_chunk_chars])
@@ -430,18 +429,29 @@ def _process_chunk(chunk: str) -> Optional[Dict[str, Any]]:
         if not response or not response.choices or not response.choices[0].message:
             logger.warning("Empty response received from API")
             return {"takeaway": "Error: Empty response from AI"}
-            
+
         content = response.choices[0].message.content
         if content:
             content = content.strip()
             try:
                 result = json.loads(content)
                 takeaway = result.get("takeaway", "")
-                
+
+                # Pre-check for leader mentions using LLM
+                if takeaway:
+                    leader_check = _llm_check_leader_mentions(takeaway)
+                    if not leader_check.get("passes_check", True):
+                        logger.warning(f"Takeaway failed leader mention check: {leader_check.get('issues', [])}")
+                        # Regenerate with stronger constraints
+                        regenerated = _regenerate_without_leaders(takeaway, chunk)
+                        if regenerated:
+                            takeaway = regenerated
+                            result["takeaway"] = takeaway
+
                 # Validate the takeaway and refine if needed
                 if takeaway:
                     validation = _validate_takeaway(takeaway, chunk) # Pass chunk for context
-                    
+
                     # If validation fails, attempt refinement
                     if not validation.get("passes_validation", True):
                         refinement_instructions = validation.get("refinement_instructions", "")
@@ -450,7 +460,7 @@ def _process_chunk(chunk: str) -> Optional[Dict[str, Any]]:
                             logger.info(f"Takeaway validation failed, attempting refinement. Issues: {validation.get('issues_found', [])}. Instructions: {refinement_instructions}")
                             refined_takeaway = _refine_takeaway(takeaway, refinement_instructions, chunk)
                             result["takeaway"] = refined_takeaway
-                            
+
                             # Log the refinement
                             logger.info(f"Takeaway refined. Original word count: {validation.get('word_count', 0)}")
                         elif not refinement_instructions:
@@ -459,23 +469,23 @@ def _process_chunk(chunk: str) -> Optional[Dict[str, Any]]:
                 return result
             except json.JSONDecodeError as json_err:
                 logger.warning(f"JSON decode error: {json_err} - Content: {content[:100]}...")
-                
+
                 # Progressive fallback for malformed JSON
                 # First try a more precise pattern for quoted takeaway
                 takeaway_match = re.search(r'"takeaway"\s*:\s*"((?:[^"\\]|\\.)*)(?:"|\Z)', content)
                 if takeaway_match:
                     return {"takeaway": takeaway_match.group(1)}
-                    
+
                 # Try an alternate pattern that just gets everything between the quotes
                 takeaway_match = re.search(r'"takeaway"\s*:\s*"([^"]*)', content)
                 if takeaway_match:
                     return {"takeaway": takeaway_match.group(1)}
-                    
+
                 # As a last resort, just try to extract any text after the takeaway key
                 takeaway_match = re.search(r'"takeaway"\s*:\s*["\']?([^"}\']+)', content)
                 if takeaway_match:
                     return {"takeaway": takeaway_match.group(1)}
-                    
+
         return {"takeaway": "Error extracting content."}
 
     except Exception as e:
@@ -489,7 +499,7 @@ def _combine_summaries(summaries: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Combine chunk summaries with improved error handling and caching."""
     # Define combined_text at function scope to avoid unbound errors
     combined_text = ""
-    
+
     # Quick returns for edge cases
     if not summaries:
         return {"takeaway": "No content available to summarize."}
@@ -502,7 +512,7 @@ def _combine_summaries(summaries: List[Dict[str, Any]]) -> Dict[str, Any]:
         valid_takeaways = [s.get("takeaway", "") for s in summaries if s and "takeaway" in s]
         if valid_takeaways:
             combined_text = " ".join(valid_takeaways)
-        
+
         if not combined_text or len(combined_text) < 10:  # Ensure we have meaningful content
             return {"takeaway": "Unable to extract meaningful content from the articles."}
 
@@ -537,18 +547,29 @@ def _combine_summaries(summaries: List[Dict[str, Any]]) -> Dict[str, Any]:
         if not response or not response.choices or not response.choices[0].message:
             logger.warning("Empty response received from API during combination")
             return {"takeaway": "Error: Empty response from AI"}
-            
+
         content = response.choices[0].message.content
         if content:
             content = content.strip()
             try:
                 result = json.loads(content)
                 takeaway = result.get("takeaway", "")
-                
+
+                # Pre-check for leader mentions using LLM
+                if takeaway:
+                    leader_check = _llm_check_leader_mentions(takeaway)
+                    if not leader_check.get("passes_check", True):
+                        logger.warning(f"Takeaway failed leader mention check: {leader_check.get('issues', [])}")
+                        # Regenerate with stronger constraints
+                        regenerated = _regenerate_without_leaders(takeaway, combined_text)
+                        if regenerated:
+                            takeaway = regenerated
+                            result["takeaway"] = takeaway
+
                 # Validate the combined takeaway and refine if needed
                 if takeaway:
                     validation = _validate_takeaway(takeaway, combined_text) # Pass combined_text for context
-                    
+
                     # If validation fails, attempt refinement
                     if not validation.get("passes_validation", True):
                         refinement_instructions = validation.get("refinement_instructions", "")
@@ -557,7 +578,7 @@ def _combine_summaries(summaries: List[Dict[str, Any]]) -> Dict[str, Any]:
                             logger.info(f"Combined takeaway validation failed, attempting refinement. Issues: {validation.get('issues_found', [])}. Instructions: {refinement_instructions}")
                             refined_takeaway = _refine_takeaway(takeaway, refinement_instructions, combined_text)
                             result["takeaway"] = refined_takeaway
-                            
+
                             # Log the refinement
                             logger.info(f"Combined takeaway refined. Original word count: {validation.get('word_count', 0)}")
                         elif not refinement_instructions:
@@ -566,23 +587,23 @@ def _combine_summaries(summaries: List[Dict[str, Any]]) -> Dict[str, Any]:
                 return result
             except json.JSONDecodeError as json_err:
                 logger.warning(f"JSON decode error in combine: {json_err} - Content: {content[:100]}...")
-                
+
                 # Progressive fallback with better patterns
                 # First try a more precise pattern for quoted takeaway
                 takeaway_match = re.search(r'"takeaway"\s*:\s*"((?:[^"\\]|\\.)*)(?:"|\Z)', content)
                 if takeaway_match:
                     return {"takeaway": takeaway_match.group(1)}
-                    
+
                 # Try an alternate pattern that just gets everything between the quotes
                 takeaway_match = re.search(r'"takeaway"\s*:\s*"([^"]*)', content)
                 if takeaway_match:
                     return {"takeaway": takeaway_match.group(1)}
-                    
+
                 # As a last resort, just try to extract any text after the takeaway key
                 takeaway_match = re.search(r'"takeaway"\s*:\s*["\']?([^"}\']+)', content)
                 if takeaway_match:
                     return {"takeaway": takeaway_match.group(1)}
-        
+
         # If we get here, use the combined text as fallback (combined_text is always initialized above)
         return {"takeaway": combined_text[:2000] if combined_text else "Error processing content"}
 
@@ -604,11 +625,11 @@ def summarize_article(content: str) -> Dict[str, Any]:
 
         # Normalize content to improve processing
         content = re.sub(r'\s+', ' ', content.strip())
-        
+
         # Generate a unique identifier for the article content for caching
         content_hash = hashlib.md5(content[:10000].encode()).hexdigest()
         cache_key = f"article_summary:{content_hash}"
-        
+
         # Check if we already have this article cached
         if cache_key in _cache:
             timestamp, result = _cache[cache_key]
@@ -616,7 +637,7 @@ def summarize_article(content: str) -> Dict[str, Any]:
             if time.time() - timestamp < 86400:  # 24 hours in seconds
                 logger.info(f"Using cached article summary")
                 return result
-        
+
         # Split content into manageable chunks
         chunks = split_into_chunks(content, max_chunk_size=40000)
 
@@ -651,10 +672,10 @@ def summarize_article(content: str) -> Dict[str, Any]:
         result = combined if combined else {
             "takeaway": "Error combining article summaries."
         }
-        
+
         # Cache the final result
         _cache[cache_key] = (time.time(), result)
-        
+
         return result
 
     except Exception as e:
@@ -729,3 +750,88 @@ def categorize_article_content(title: str, content: str) -> Dict[str, str]:
             "category": "Uncategorized",
             "category_justification": f"Categorization error: {str(e)}",
         }
+
+def _llm_check_leader_mentions(takeaway: str) -> Dict[str, Any]:
+    """
+    Use LLM to check for leader mentions in the takeaway.
+
+    This is a proactive check to prevent leader mentions from the start.
+    """
+    prompt = f"""
+    Analyze the following takeaway to determine if it contains any mentions of "AI leaders", "retail leaders", "leaders", or the target audience,
+    or any language implying that the takeaway is directed specifically towards leaders.
+    Be very sensitive in identifying such mentions, even if they are subtle or indirect.
+
+    Takeaway: "{takeaway}"
+
+    Respond with a JSON object in the following format:
+    {{
+        "passes_check": true/false,
+        "issues": ["Specific reasons for failure, e.g., 'Mentions AI leaders directly', 'Uses language targeted at retail leaders'"] or [] if passes.
+    }}
+    """
+
+    try:
+        response = _get_client().chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are a strict evaluator for AI-generated text. Your task is to identify any leader mentions."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.1, # Low temperature for accuracy
+            timeout=20
+        )
+
+        if response and response.choices and response.choices[0].message.content:
+            result = json.loads(response.choices[0].message.content)
+            return result
+        else:
+            logger.warning("LLM leader mention check returned no content.")
+            return {"passes_check": False, "issues": ["LLM check failed to return content."]}
+
+    except Exception as e:
+        logger.error(f"Error during LLM leader mention check: {str(e)}")
+        return {"passes_check": False, "issues": [f"LLM check failed due to error: {str(e)}"]}
+
+def _regenerate_without_leaders(original_takeaway: str, original_content: str) -> Optional[str]:
+    """
+    Regenerate takeaway using LLM with stronger constraints against leader mentions.
+    """
+    prompt = f"""
+    You are tasked with rewriting a business-focused takeaway to remove any mentions of "AI leaders", "retail leaders", "leaders", or the target audience.
+    The original takeaway is provided below, along with the original content for context.
+
+    Original Takeaway: "{original_takeaway}"
+
+    Original Content: "{original_content[:5000]}..."
+
+    Rewrite the takeaway to avoid any direct or indirect references to leaders, writing as if describing general industry trends and implications.
+    The rewritten takeaway MUST still be business-focused, concise, and informative. Follow the following STRICT RULES:
+
+    {_get_takeaway_rubric()}
+
+    Respond ONLY with the rewritten takeaway. Do not include any additional text or explanations.
+    """
+
+    try:
+        response = _get_client().chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "You are an expert at rewriting business takeaways to remove leader mentions."},
+                {"role": "user", "content": prompt}
+            ],
+            max_completion_tokens=1500,
+            temperature=0.3, # Slightly higher temperature for creativity in rewriting
+            timeout=25
+        )
+
+        if response and response.choices and response.choices[0].message.content:
+            return response.choices[0].message.content.strip()
+        else:
+            logger.warning("LLM regeneration failed to return content.")
+            return None
+
+    except Exception as e:
+        logger.error(f"Error during LLM takeaway regeneration: {str(e)}")
+        return None
